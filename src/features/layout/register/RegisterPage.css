@@ -41,8 +41,7 @@
 
 /* Card */
 .register-card {
-    height: min(500px, 100%);
-    width: min(750px, 100%);
+    width: min(500px, 100%);
     background: rgba(43, 0, 51, 0.78); /* proche de #2b0033 */
     border: 2px solid rgba(255, 140, 0, 0.75);
     border-radius: 14px;
