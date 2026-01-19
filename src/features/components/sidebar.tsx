@@ -213,6 +213,12 @@ const Sidebar = () => {
         return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
     }, []);
 
+    const handleDoubleClick = (item: FlatItem) => {
+        if (item.hasChildren){
+            toggleExpand(item.id);
+        }
+    }
+
     return (
         <>
             <aside
@@ -272,6 +278,7 @@ const Sidebar = () => {
                                     <button
                                         className={`tree-item ${isActive ? "active" : ""}`}
                                         onClick={() => handleSelect(item.id)}
+                                        onDoubleClick={() => handleDoubleClick(item)}
                                     >
                                         <span className="icon">
                                             {getIcon(item.hasChildren, isOpen && item.hasChildren)}
