@@ -65,7 +65,7 @@ function App() {
                 <GiTorch />
             </div>
 
-            {/* --- ROUTING DE L'APPLICATION --- */}
+
             <Routes>
                 <Route
                     path={"/login"}
