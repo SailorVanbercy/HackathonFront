@@ -14,3 +14,26 @@
     min-height: 0;
     overflow: hidden;
 }
+
+/* Cache le curseur normal pour l'immersion */
+body {
+    cursor: none;
+    background-color: #0d0d0d; /* Fond très sombre nécessaire */
+}
+
+/* Le halo de lumière */
+.torch-cursor {
+    position: fixed;
+    width: 350px;       /* Taille de la zone éclairée */
+    height: 350px;
+    border-radius: 50%;
+    /* Dégradé : Centre clair -> Extérieur transparent */
+    background: radial-gradient(circle, rgba(255, 140, 0, 0.15) 0%, transparent 60%);
+    transform: translate(-50%, -50%); /* Pour centrer le halo sur la souris */
+    pointer-events: none; /* Permet de cliquer au travers du halo */
+    z-index: 9999;        /* Toujours au-dessus de tout */
+    mix-blend-mode: screen; /* Fusionne joliment avec les couleurs */
+}
+*::before, *::after {
+    cursor: none !important;
+}
