@@ -10,7 +10,7 @@ interface HomePageProps {
     onOpenRecent: () => void;
 }
 
-// Animation de tremblement pour les boutons
+
 const spookyShake = {
     hover: {
         x: [0, -2, 2, -2, 2, 0],
@@ -21,7 +21,7 @@ const spookyShake = {
 const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent }) => {
     return (
         <div className="home-root">
-            {/* Décor d'arrière-plan animé (Orbes) */}
+
             <Ghost/>
             <motion.div
                 className="bg-orb orb-1"
@@ -34,7 +34,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                 transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
 
-            {/* Sidebar (Navigation) */}
+
             <Sidebar />
 
             {/* Zone principale (Contenu à droite de la sidebar) */}
@@ -44,10 +44,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                {/* CORRECTION CENTRAGE :
-                    Le titre est maintenant ici, dans le flux de la main-area.
-                    Il sera centré par rapport à l'espace restant à droite.
-                */}
+
                 <motion.div
                     className="hero-center"
                     initial={{ y: -50, opacity: 0 }}
