@@ -6,6 +6,7 @@ import LoginPage from "./features/layout/login/LoginPage.tsx";
 import {Route, Routes} from "react-router";
 import RegisterPage from "./features/layout/register/RegisterPage.tsx";
 import HomePage from "./features/layout/HomePage.tsx";
+import Footer from "./features/components/Footer.tsx";
 
 function App() {
     return (
@@ -27,17 +28,9 @@ function App() {
             } }/>}>
             </Route>
             </Routes>
+            <Footer/>
         </div>
-        // <div className="app">
-        //     <main className="app-main">
-        //         <HomePage user={""} onCreateFolder={function(): void {
-        //             throw new Error("Function not implemented.");
-        //         } } onOpenRecent={function(): void {
-        //             throw new Error("Function not implemented.");
-        //         } } />
-        //     </main>
-        //     <Footer />
-        // </div>
+
     );
 }
 
