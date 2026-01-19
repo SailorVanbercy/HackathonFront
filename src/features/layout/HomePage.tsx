@@ -20,7 +20,7 @@ const spookyShake = {
 const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent }) => {
     return (
         <div className="home-root">
-            {/* Décor d'arrière-plan animé */}
+            {/* Décor d'arrière-plan animé (Orbes) */}
             <motion.div
                 className="bg-orb orb-1"
                 animate={{ y: [0, -20, 0], opacity: [0.3, 0.6, 0.3] }}
@@ -32,27 +32,32 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                 transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
 
-            {/* Titre fixe */}
-            <motion.div
-                className="hero-center"
-                initial={{ y: -50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-            >
-                <h1 className="home-title">
-                    🎃 Bienvenue {user} sur <span className="grimoire">The Lost Grimoire</span>
-                </h1>
-            </motion.div>
-
+            {/* Sidebar (Navigation) */}
             <Sidebar />
 
-            {/* Zone principale avec animation d'entrée */}
+            {/* Zone principale (Contenu à droite de la sidebar) */}
             <motion.main
                 className="main-area"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
             >
+                {/* CORRECTION CENTRAGE :
+                    Le titre est maintenant ici, dans le flux de la main-area.
+                    Il sera centré par rapport à l'espace restant à droite.
+                */}
+                <motion.div
+                    className="hero-center"
+                    initial={{ y: -50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                    <h1 className="home-title">
+                        🎃 Bienvenue {user} sur <span className="grimoire">The Lost Grimoire</span>
+                    </h1>
+                </motion.div>
+
+                {/* Boutons d'action */}
                 <div className="main-actions">
                     <motion.button
                         className="halloween-btn"
