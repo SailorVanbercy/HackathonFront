@@ -6,6 +6,7 @@ import type {
 } from "../../../shared/DTO/users/users.ts";
 
 const API_URL =import.meta.env.VITE_API_URL + "/auth";
+const ME_URL =import.meta.env.VITE_API_URL + "/users";
 export const login = async (user : LoginRequest) : Promise<void> => {
     const response =await fetch(API_URL + "/login", {
         method: "POST",
@@ -36,7 +37,7 @@ export const register = async (user : RegisterRequest): Promise<RegisterUserResp
 }
 
 export const getCurrentUser = async () : Promise<UserResponse> => {
-    const response = await fetch(API_URL + "/me", {
+    const response = await fetch(ME_URL + "/me", {
         method: "GET",
         headers:{
             "Content-Type": "application/json"
