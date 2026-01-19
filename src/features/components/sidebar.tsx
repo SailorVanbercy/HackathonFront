@@ -44,6 +44,16 @@ type FlatItem = {
     hasChildren: boolean;
 };
 
+const getDescendantIds = (node : TreeNode, ids : string[] = []) => {
+    if(node.children){
+        node.children.forEach((child) => {
+            ids.push(child.id);
+            getDescendantIds(child, ids);
+        })
+    }
+    return ids;
+}
+
 const Sidebar = () => {
     // --- State Données ---
     const [treeData, setTreeData] = useState<TreeNode[]>(initialData);
@@ -147,8 +157,30 @@ const Sidebar = () => {
 
     // --- Handlers ---
     const toggleCollapse = () => setIsCollapsed((s) => !s);
-    const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
     const handleSelect = (id: string) => setActiveId(id);
+
+    const toggleExpand = (id : string) => {
+        setExpanded((prev) => {
+            const isClosing = prev[id]; // vérification de l'état avant le click
+            const newState = {...prev, [id]: !prev[id]};
+
+            if(isClosing){
+                // on récupère le dossier de base
+                const node = allNodes.find((n) => n.id === id);
+
+                if(node){
+                    // on récupère la liste des dossiers enfants
+                    const descentants = getDescendantIds(node);
+
+                    // on ferme les dossier enfants
+                    descentants.forEach((childId) => {
+                        newState[childId] = false;
+                    });
+                }
+            }
+            return newState;
+        });
+    };
 
     const handleContextMenu = (e: React.MouseEvent, id: string) => {
         e.preventDefault();
