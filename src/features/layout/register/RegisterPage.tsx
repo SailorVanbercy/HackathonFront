@@ -4,14 +4,14 @@ import "./RegisterPage.css"
 // import { useNavigate, Link } from "react-router-dom";
 
 import type { RegisterRequest } from "../../../shared/DTO/users/users";
-import { register } from "../../services/auth/authservice";
-import {NavLink} from "react-router";
+import { register, login } from "../../services/auth/authservice";
+import {NavLink, useNavigate} from "react-router";
 // import { useAuth } from "../../context/AuthContext";
 
 type FormState = RegisterRequest & { confirmPassword?: string };
 
 export default function RegisterPage() {
-    // const navigate = useNavigate();
+    const navigate = useNavigate();
     // const { login } = useAuth();
 
     const [form, setForm] = useState<FormState>({
@@ -68,8 +68,8 @@ export default function RegisterPage() {
 
 
             // TODO redirection
-            // await login({ email: form.email, password: form.password } as any);
-            // navigate("/"); // ou "/dashboard"
+            await login({ email: form.email, password: form.password } as any);
+            navigate("/home");
 
         } catch (err: any) {
             setError(err?.message ?? "Erreur lors de l'inscription.");

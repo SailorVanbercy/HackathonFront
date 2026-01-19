@@ -44,6 +44,16 @@ type FlatItem = {
     hasChildren: boolean;
 };
 
+const getDescendantIds = (node : TreeNode, ids : string[] = []) => {
+    if(node.children){
+        node.children.forEach((child) => {
+            ids.push(child.id);
+            getDescendantIds(child, ids);
+        })
+    }
+    return ids;
+}
+
 const Sidebar = () => {
     // --- State Données ---
     const [treeData, setTreeData] = useState<TreeNode[]>(initialData);
@@ -133,7 +143,7 @@ const Sidebar = () => {
                 if (allowed) {
                     list.push({ id: node.id, name: node.name, depth, hasChildren });
                 }
-                const isOpen = matchSet ? !!matchSet.has(node.id) : !!expanded[node.id];
+                const isOpen = matchSet ? matchSet.has(node.id) : expanded[node.id];
                 if (hasChildren && isOpen) {
                     const kids = node.children!;
                     for (let i = kids.length - 1; i >= 0; i--) {
@@ -147,15 +157,37 @@ const Sidebar = () => {
 
     // --- Handlers ---
     const toggleCollapse = () => setIsCollapsed((s) => !s);
-    const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
     const handleSelect = (id: string) => setActiveId(id);
+
+    const toggleExpand = (id : string) => {
+        setExpanded((prev) => {
+            const isClosing = prev[id]; // vérification de l'état avant le click
+            const newState = {...prev, [id]: !prev[id]};
+
+            if(isClosing){
+                // on récupère le dossier de base
+                const node = allNodes.find((n) => n.id === id);
+
+                if(node){
+                    // on récupère la liste des dossiers enfants
+                    const descentants = getDescendantIds(node);
+
+                    // on ferme les dossier enfants
+                    descentants.forEach((childId) => {
+                        newState[childId] = false;
+                    });
+                }
+            }
+            return newState;
+        });
+    };
 
     const handleContextMenu = (e: React.MouseEvent, id: string) => {
         e.preventDefault();
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id });
     };
 
-    // CORRECTION TS6133: On utilise setTreeData avec des fonctions récursives
+    // CORRECTION TS6133: On utilise setTreeData avec des fonctions récursives -
 
     // Fonction récursive pour renommer
     const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNode[] => {
@@ -213,6 +245,12 @@ const Sidebar = () => {
         return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
     }, []);
 
+    const handleDoubleClick = (item: FlatItem) => {
+        if (item.hasChildren){
+            toggleExpand(item.id);
+        }
+    }
+
     return (
         <>
             <aside
@@ -245,7 +283,7 @@ const Sidebar = () => {
 
                     <div className="tree">
                         {visibleItems.map((item) => {
-                            const isOpen = (matchSet ? !!matchSet.has(item.id) : !!expanded[item.id]);
+                            const isOpen = (matchSet ? matchSet.has(item.id) : expanded[item.id]);
                             const isActive = activeId === item.id;
 
                             return (
@@ -272,6 +310,7 @@ const Sidebar = () => {
                                     <button
                                         className={`tree-item ${isActive ? "active" : ""}`}
                                         onClick={() => handleSelect(item.id)}
+                                        onDoubleClick={() => handleDoubleClick(item)}
                                     >
                                         <span className="icon">
                                             {getIcon(item.hasChildren, isOpen && item.hasChildren)}
