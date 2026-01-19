@@ -1,11 +1,12 @@
 
 .footer {
-    height: 60px;
     display: flex;
-    justify-content: center;
     align-items: center;
-    background: #0c000c;
-    border-top: 2px solid #ff6600;
-    color: #ffcc99;
-    font-size: 0.9rem;
+    justify-content: center;
+    height: 56px;            /* hauteur fixe */
+    padding: 0 16px;
+    border-top: 2px solid #ff8c00;
+    background: #1a1a1a;
+    color: #f0e6ff;
 }
+

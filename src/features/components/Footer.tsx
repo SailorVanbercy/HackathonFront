@@ -4,9 +4,10 @@ import "./Footer.css";
 const Footer = () => {
     return (
         <footer className="footer">
-            <p>© 2026 - The Lost Grimoire • Hackathon AEMT 🎃</p>
+            <span>© 2026 - The Lost Grimoire • Hackathon AEMT 🎃</span>
         </footer>
     );
 };
 
 export default Footer;
+

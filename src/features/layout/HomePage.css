@@ -1,15 +1,122 @@
 
-.home-container {
-    height: calc(100vh - 60px);
+/* ------- Layout global ------- */
+.home-root {
+    /* Si tu as un header fixe (60px), repasse à: height: calc(100vh - 60px); */
+    height: 100vh;
+    width: 100%;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
     background: linear-gradient(145deg, #0d0d0d, #1a001a);
     color: #f5e6ff;
-    text-align: center;
-    padding: 2rem;
+    overflow: hidden;
 }
+
+/* ------- Sidebar ------- */
+.sidebar {
+    position: relative;
+    width: 280px;          /* largeur ouverte */
+    min-width: 200px;
+    background: #2b0033;
+    border-right: 2px solid #ff8c00;
+    padding: 18px 16px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: width 0.25s ease;
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    width: 72px;           /* largeur fermée */
+}
+
+/* Bouton pour rétracter/étendre la sidebar */
+.collapse-btn {
+    position: absolute;
+    top: 10px;
+    right: -14px;          /* “pilule” qui mord sur le contenu */
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 2px solid #ff8c00;
+    background: #330033;
+    color: #ffcc99;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 8px #ff6600;
+}
+
+.collapse-btn:hover {
+    background: #4b0050;
+    box-shadow: 0 0 12px #ff9933;
+}
+
+.chevron {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-top: 2px solid #ffcc99;
+    border-right: 2px solid #ffcc99;
+    transform: rotate(225deg); /* flèche vers la gauche (replier) */
+    transition: transform 0.2s ease;
+}
+.chevron.right {
+    transform: rotate(45deg);  /* flèche vers la droite (déplier) */
+}
+
+/* Contenu visible/masqué lors de la rétractation */
+.sidebar-content {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+.sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Titre et éléments de navigation */
+.sidebar-title {
+    font-family: "Cinzel", serif;
+    text-shadow: 0 0 8px #ff6600;
+    margin: 8px 0 6px 0;
+}
+
+.nav-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.nav-item {
+    text-align: left;
+    background: transparent;
+    border: 1px dashed #ff8c00;
+    color: #ffcc99;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.nav-item:hover {
+    background: #4b0050;
+    transform: translateX(2px);
+}
+
+/* Actions en bas de la sidebar */
+.sidebar-actions {
+    margin-top: auto;
+    display: grid;
+    gap: 8px;
+}
+
+/* ------- Zone principale ------- */
+.main-area {
+    flex: 1;
+    min-width: 0;
+    padding: 28px;
+    overflow: auto;
+}
+
+
 
 .home-title {
     font-size: 2.6rem;
@@ -17,31 +124,44 @@
     font-family: "Cinzel", serif;
     text-shadow: 0 0 10px #ff6600;
 }
-
 .grimoire {
     color: #ff6600;
     font-weight: bold;
 }
-
-.home-buttons {
-    display: flex;
-    gap: 1.5rem;
-}
-
 .halloween-btn {
     background: #330033;
     border: 2px solid #ff6600;
     color: #ffcc99;
-    font-size: 1.2rem;
-    padding: 0.8rem 1.6rem;
+    font-size: 1.05rem;
+    padding: 0.7rem 1.2rem;
     border-radius: 8px;
     cursor: pointer;
     transition: 0.3s;
     box-shadow: 0 0 8px #ff6600;
 }
-
 .halloween-btn:hover {
     background: #660066;
-    transform: scale(1.05);
+    transform: scale(1.03);
     box-shadow: 0 0 15px #ff9933;
+}
+
+/* Accessibilité - utilitaire pour texte caché visuellement */
+.sr-only {
+    position: absolute !important;
+    height: 1px; width: 1px;
+    overflow: hidden; clip: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap; clip-path: inset(50%);
+}
+
+/* ------- Responsive ------- */
+@media (max-width: 900px) {
+    .sidebar {
+        width: 240px;
+    }
+}
+@media (max-width: 700px) {
+    /* sur mobile, on commence replié */
+    .sidebar {
+        width: 72px;
+    }
 }
