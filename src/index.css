@@ -1,8 +1,9 @@
+
 :root {
-    --footer-h: 56px;       /* ajuste si ton footer est plus haut /
+    --footer-h: 56px;       /* ajuste si ton footer est plus haut */
 }
 
-/ La chaîne de hauteurs + largeur /
+/* La chaîne de hauteurs + largeur */
 html, body, #root {
     height: 100%;
     width: 100%;
@@ -11,9 +12,9 @@ html, body, #root {
 html, body {
     margin: 0;
     padding: 0;
-    / Empêche tout scroll global /
-    overflow: hidden;       / ni vertical, ni horizontal /
-    background: #1a1a1a;    / même fond que l'app pour éviter toute "bande" visible */
+    /* Empêche tout scroll global */
+    overflow: hidden;       /* ni vertical, ni horizontal */
+    background: #1a1a1a;    /* même fond que l'app pour éviter toute "bande" visible */
     color: #f0e6ff;
 }
 
@@ -22,3 +23,4 @@ html, body {
 *::after {
     box-sizing: border-box;
 }
+

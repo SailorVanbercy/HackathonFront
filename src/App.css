@@ -1,9 +1,10 @@
+
 /* L'app tient EXACTEMENT dans le viewport, sans scroll global */
 .app {
-    height: 100vh;            /* pas de min-height → pas d’espace en trop */
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;         /* verrouille tout débordement */
+    overflow: hidden;
 }
 
 /* La zone centrale = viewport - footer, sans scroll */
