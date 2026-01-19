@@ -5,6 +5,7 @@ import "./RegisterPage.css"
 
 import type { RegisterRequest } from "../../../shared/DTO/users/users";
 import { register } from "../../services/auth/authservice";
+import {NavLink} from "react-router";
 // import { useAuth } from "../../context/AuthContext";
 
 type FormState = RegisterRequest & { confirmPassword?: string };
@@ -158,7 +159,7 @@ export default function RegisterPage() {
 
                         <div className="register-field">
                             <label className="register-label" htmlFor="password">
-                                Mot de passe
+                                Mot de passe -- Min. 6 caractères
                             </label>
                             <input
                                 id="password"
@@ -170,7 +171,7 @@ export default function RegisterPage() {
                                 autoComplete="new-password"
                                 placeholder="••••••••"
                             />
-                            <p className="register-hint">Min. 6 caractères</p>
+
                         </div>
 
                         <div className="register-field">
@@ -197,11 +198,8 @@ export default function RegisterPage() {
 
                     <div className="register-footer">
                         <p className="register-footer-text">
-                            Déjà un compte ? <span className="register-footer-link">Connexion</span>
+                            Déjà un compte ? <NavLink to="/login" className="register-footer-link" >Connexion</NavLink>
                         </p>
-                        {/* Quand tu remettras le router :
-              <Link className="register-footer-link" to="/login">Connexion</Link>
-            */}
                     </div>
                 </form>
             </div>

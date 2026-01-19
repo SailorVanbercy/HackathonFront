@@ -5,10 +5,11 @@ import "./LoginPage.css";
 
 import type { LoginRequest } from "../../../shared/DTO/users/users";
 import { useAuth } from "../../context/AuthContext";
+import {NavLink, useNavigate} from "react-router";
 
 export default function LoginPage() {
     const { login } = useAuth();
-
+    let navigate = useNavigate();
     const [form, setForm] = useState<LoginRequest>({
         email: "",
         password: "",
@@ -49,7 +50,7 @@ export default function LoginPage() {
         try {
             await login(form); // <- utilise ton AuthContext (loginService + getCurrentUser)
             setSuccess("Connexion réussie. Bienvenue dans le grimoire 🎃");
-            // TODO: redirection si tu utilises react-router (ex: navigate("/"))
+            navigate("/home");
         } catch (err: any) {
             setError(err?.message ?? "Erreur de connexion.");
         } finally {
@@ -127,11 +128,8 @@ export default function LoginPage() {
 
                     <div className="login-footer">
                         <p className="login-footer-text">
-                            Pas encore de compte ? <span className="login-footer-link">Inscription</span>
+                            Pas encore de compte ? <NavLink to="/register" className="login-footer-link">Inscription</NavLink>
                         </p>
-                        {/* Si tu remets le router :
-              <Link className="login-footer-link" to="/register">Inscription</Link>
-            */}
                     </div>
                 </form>
             </div>
