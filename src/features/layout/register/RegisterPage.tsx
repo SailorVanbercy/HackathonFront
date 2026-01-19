@@ -5,6 +5,7 @@ import "./RegisterPage.css"
 
 import type { RegisterRequest } from "../../../shared/DTO/users/users";
 import { register } from "../../services/auth/authservice";
+import { Link } from "react-router";
 // import { useAuth } from "../../context/AuthContext";
 
 type FormState = RegisterRequest & { confirmPassword?: string };
@@ -197,11 +198,8 @@ export default function RegisterPage() {
 
                     <div className="register-footer">
                         <p className="register-footer-text">
-                            Déjà un compte ? <span className="register-footer-link">Connexion</span>
+                            Déjà un compte ? <Link className="register-footer-link" to="/login">Connexion</Link>
                         </p>
-                        {/* Quand tu remettras le router :
-              <Link className="register-footer-link" to="/login">Connexion</Link>
-            */}
                     </div>
                 </form>
             </div>

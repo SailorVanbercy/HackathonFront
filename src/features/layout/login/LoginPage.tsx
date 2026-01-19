@@ -5,6 +5,7 @@ import "./LoginPage.css";
 
 import type { LoginRequest } from "../../../shared/DTO/users/users";
 import { useAuth } from "../../context/AuthContext";
+import {Link} from "react-router";
 
 export default function LoginPage() {
     const { login } = useAuth();
@@ -127,11 +128,8 @@ export default function LoginPage() {
 
                     <div className="login-footer">
                         <p className="login-footer-text">
-                            Pas encore de compte ? <span className="login-footer-link">Inscription</span>
+                            Pas encore de compte ? <Link className="login-footer-link" to="/register">Inscription</Link>
                         </p>
-                        {/* Si tu remets le router :
-              <Link className="login-footer-link" to="/register">Inscription</Link>
-            */}
                     </div>
                 </form>
             </div>
