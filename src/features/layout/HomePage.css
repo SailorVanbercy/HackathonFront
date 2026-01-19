@@ -1,7 +1,8 @@
+/* src/features/layout/HomePage.css */
 
 /* ------- Layout global ------- */
 .home-root {
-    height: 100vh; /* si header fixe: calc(100vh - 60px) */
+    height: 100vh;
     width: 100%;
     display: flex;
     background: linear-gradient(145deg, #0d0d0d, #1a001a);
@@ -23,183 +24,6 @@
     pointer-events: none;
     z-index: 2;
 }
-.sidebar { z-index: 3; }
-.main-area { z-index: 1; }
-
-/* ------- Sidebar ------- */
-.sidebar {
-    position: relative;
-    width: 280px;
-    min-width: 200px;
-    background: #2b0033;
-    border-right: 2px solid #ff8c00;
-    padding: 12px 12px 12px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: width 0.25s ease;
-    overflow: hidden;
-}
-.sidebar.collapsed { width: 72px; }
-
-/* Bouton rétracter */
-.collapse-btn {
-    position: absolute;
-    top: 10px;
-    right: -14px;
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    border: 2px solid #ff8c00;
-    background: #330033;
-    color: #ffcc99;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    box-shadow: 0 0 8px #ff6600;
-    z-index: 4;
-}
-.collapse-btn:hover {
-    background: #4b0050;
-    box-shadow: 0 0 12px #ff9933;
-}
-.chevron {
-    display: inline-block;
-    width: 0.55rem;
-    height: 0.55rem;
-    border-top: 2px solid #ffcc99;
-    border-right: 2px solid #ffcc99;
-    transform: rotate(225deg);
-    transition: transform 0.2s ease;
-}
-.chevron.right { transform: rotate(45deg); }
-
-/* Contenu de la sidebar */
-.sidebar-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 0; /* pour que .tree puisse scroller */
-    height: 100%;
-}
-
-/* Barre de recherche */
-.sidebar-top { display: flex; align-items: center; }
-.search-wrap { position: relative; width: 100%; }
-.search-ico {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.85;
-    pointer-events: none;
-}
-.sidebar-search {
-    width: 100%;
-    padding: 8px 10px 8px 30px;
-    border-radius: 8px;
-    border: 1px solid #ff8c00;
-    background: #330033;
-    color: #ffcc99;
-    outline: none;
-    transition: box-shadow .2s ease, border-color .2s ease;
-}
-.sidebar-search:focus {
-    box-shadow: 0 0 10px #ff9933;
-    border-color: #ff9933;
-}
-
-/* Poignée de redimensionnement */
-.resize-handle {
-    position: absolute;
-    top: 0;
-    right: -3px;
-    width: 6px;
-    height: 100%;
-    cursor: col-resize;
-    background: linear-gradient(to right, transparent, rgba(255, 140, 0, 0.35), transparent);
-    opacity: 0.4;
-    transition: opacity .15s ease;
-}
-.resize-handle:hover { opacity: 0.9; }
-.sidebar.collapsed .resize-handle { display: none; }
-
-/* Arborescence (liste plate) */
-.tree {
-    overflow: auto;
-    padding: 4px 2px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.tree-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-}
-.disclosure {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 1px dashed #ff8c00;
-    display: grid;
-    place-items: center;
-    background: transparent;
-    color: #ffcc99;
-    cursor: pointer;
-    transition: background .2s ease, transform .2s ease;
-}
-.disclosure:hover { background: #4b0050; }
-.disclosure.placeholder {
-    border-color: transparent;
-    cursor: default;
-}
-.chev {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-top: 2px solid #ffcc99;
-    border-right: 2px solid #ffcc99;
-    transform: rotate(45deg); /* droite = fermé */
-    transition: transform .2s ease;
-}
-.disclosure.open .chev { transform: rotate(135deg); } /* bas = ouvert */
-
-.tree-item {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 26px;
-    padding: 0 8px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: #ffcc99;
-    cursor: pointer;
-    text-align: left;
-    transition: background .2s ease, border-color .2s ease, transform .2s ease;
-}
-.tree-item:hover {
-    background: #4b0050;
-    border-color: #ff8c00;
-}
-.tree-item.active {
-    background: #5c0a61;
-    border-color: #ff9933;
-    box-shadow: inset 0 0 0 1px rgba(255,153,51,0.35);
-}
-
-/* Icône et libellé */
-.icon { width: 1.2rem; display: inline-grid; place-items: center; }
-.label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* Actions en bas (non utilisée si on déplace les boutons) */
-.sidebar-actions {
-    margin-top: auto;
-    display: grid;
-    gap: 8px;
-}
 
 /* --- Zone principale --- */
 .main-area {
@@ -208,6 +32,7 @@
     padding: 28px;
     overflow: auto;
     position: relative;
+    z-index: 1;
 }
 
 /* --- Styles “Halloween” existants --- */
@@ -218,6 +43,7 @@
     text-shadow: 0 0 10px #ff6600;
 }
 .grimoire { color: #ff6600; font-weight: bold; }
+
 .halloween-btn {
     background: #330033;
     border: 2px solid #ff6600;
@@ -235,7 +61,7 @@
     box-shadow: 0 0 15px #ff9933;
 }
 
-/* Accessibilité - utilitaire pour texte caché visuellement */
+/* Accessibilité */
 .sr-only {
     position: absolute !important;
     height: 1px; width: 1px;
@@ -250,15 +76,28 @@
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    margin: 72px auto 24px; /* dessous du titre (overlay) */
+    margin: 72px auto 24px;
     max-width: 1100px;
 }
 
-@media (max-width: 900px) {
-    .sidebar { min-width: 180px; }
-}
 @media (max-width: 700px) {
-    .sidebar { width: 72px !important; } /* mobile: repliée par défaut */
-    .resize-handle { display: none; }
     .main-actions { margin: 56px auto 20px; padding: 0 8px; }
+}
+
+.bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    z-index: 0;
+    pointer-events: none;
+}
+.orb-1 {
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,140,0,0.2) 0%, transparent 70%);
+    top: 20%; left: 10%;
+}
+.orb-2 {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(138,43,226,0.15) 0%, transparent 70%);
+    bottom: 10%; right: 10%;
 }
