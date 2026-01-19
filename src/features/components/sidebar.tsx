@@ -143,7 +143,7 @@ const Sidebar = () => {
                 if (allowed) {
                     list.push({ id: node.id, name: node.name, depth, hasChildren });
                 }
-                const isOpen = matchSet ? !!matchSet.has(node.id) : !!expanded[node.id];
+                const isOpen = matchSet ? matchSet.has(node.id) : expanded[node.id];
                 if (hasChildren && isOpen) {
                     const kids = node.children!;
                     for (let i = kids.length - 1; i >= 0; i--) {
@@ -187,7 +187,7 @@ const Sidebar = () => {
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id });
     };
 
-    // CORRECTION TS6133: On utilise setTreeData avec des fonctions récursives
+    // CORRECTION TS6133: On utilise setTreeData avec des fonctions récursives -
 
     // Fonction récursive pour renommer
     const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNode[] => {
@@ -283,7 +283,7 @@ const Sidebar = () => {
 
                     <div className="tree">
                         {visibleItems.map((item) => {
-                            const isOpen = (matchSet ? !!matchSet.has(item.id) : !!expanded[item.id]);
+                            const isOpen = (matchSet ? matchSet.has(item.id) : expanded[item.id]);
                             const isActive = activeId === item.id;
 
                             return (
