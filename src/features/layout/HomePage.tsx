@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import "./HomePage.css";
 import Sidebar from "../components/sidebar";
+import {Ghost} from "../components/Ghost.tsx";
 
 interface HomePageProps {
     user: string;
@@ -21,6 +22,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
     return (
         <div className="home-root">
             {/* Décor d'arrière-plan animé (Orbes) */}
+            <Ghost/>
             <motion.div
                 className="bg-orb orb-1"
                 animate={{ y: [0, -20, 0], opacity: [0.3, 0.6, 0.3] }}
