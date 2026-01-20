@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
@@ -7,6 +7,12 @@ import type {TreeNode, FlatItem} from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal } from "./SideBarPart/SidebarModals";
+
+// --- TYPES EXPORTÉS ---
+// C'est ce type que la HomePage va utiliser pour typer la "ref"
+export interface SidebarHandle {
+    openCreateModal: () => void;
+}
 
 // --- HELPERS LOGIQUES ---
 const getDescendantIds = (node: TreeNode, ids: string[] = []) => {
@@ -60,7 +66,8 @@ const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
 
-const Sidebar = () => {
+// --- COMPOSANT WRAPPÉ DANS FORWARDREF ---
+const Sidebar = forwardRef<SidebarHandle, object>((_props, ref) => {
     // --- STATE DONNEES ---
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -88,6 +95,16 @@ const Sidebar = () => {
 
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
+
+    // --- EXPOSITION AU PARENT ---
+    // C'est ici que la magie opère : on expose la fonction openCreateModal vers l'extérieur
+    useImperativeHandle(ref, () => ({
+        openCreateModal: () => {
+            // On appelle la fonction interne d'ouverture (à la racine par défaut)
+            // eslint-disable-next-line react-hooks/immutability
+            openCreateModal(null);
+        }
+    }));
 
     // --- CHARGEMENT ---
     const refreshTree = async () => {
@@ -189,7 +206,6 @@ const Sidebar = () => {
             const isClosing = prev[id];
             const newState = { ...prev, [id]: !prev[id] };
             if (isClosing) {
-                // Fermeture récursive
                 const node = allNodes.find(n => n.id === id);
                 if (node) {
                     getDescendantIds(node).forEach(childId => newState[childId] = false);
@@ -219,7 +235,6 @@ const Sidebar = () => {
             const payloadId = targetParentId === "root" ? null : Number(targetParentId);
             await createDirectory({ name: newFolderName, parentDirectoryId: payloadId });
             await refreshTree();
-            // On ouvre le dossier parent pour voir le nouveau dossier
             if (payloadId !== null) {
                 setExpanded(prev => ({ ...prev, [String(payloadId)]: true }));
             }
@@ -241,9 +256,8 @@ const Sidebar = () => {
     const submitRename = (e: React.FormEvent) => {
         e.preventDefault();
         if (actionItemId && renameValue.trim()) {
-            // Optimiste update
             setTreeData(prev => updateNodeName(prev, actionItemId, renameValue));
-            // TODO: Appel API réel ici (ex: updateDirectory(actionItemId, renameValue))
+            // TODO: Appel API
             setIsRenameOpen(false);
             setActionItemId(null);
         }
@@ -257,9 +271,8 @@ const Sidebar = () => {
 
     const submitDelete = () => {
         if (actionItemId) {
-            // Optimiste update
             setTreeData(prev => removeNode(prev, actionItemId));
-            // TODO: Appel API réel ici (ex: deleteDirectory(actionItemId))
+            // TODO: Appel API
             setIsDeleteOpen(false);
             setActionItemId(null);
         }
@@ -324,7 +337,6 @@ const Sidebar = () => {
                     />
                 </div>
 
-                {/* Poignée de redimensionnement */}
                 {!isCollapsed && (
                     <div
                         className="resize-handle"
@@ -346,7 +358,7 @@ const Sidebar = () => {
                 onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
                 onRename={openRename}
                 onDelete={openDelete}
-                // @ts-ignore
+                // @ts-expect-error
                 onNewFolder={openCreateModal}
             />
 
@@ -377,6 +389,6 @@ const Sidebar = () => {
             />
         </>
     );
-};
+});
 
 export default Sidebar;

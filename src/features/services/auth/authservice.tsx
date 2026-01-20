@@ -49,3 +49,13 @@ export const getCurrentUser = async () : Promise<UserResponse> => {
     }
     return response.json();
 }
+
+export const logout = async () : Promise<void> => {
+    await fetch(API_URL + "/logout", {
+        method: "DELETE",
+        headers:{
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+}
