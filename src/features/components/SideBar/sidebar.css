@@ -3,7 +3,7 @@
 /* ------- Sidebar Principale ------- */
 .sidebar {
     position: relative;
-    /* width géré par le TSX */
+    /* On laisse le TSX gérer le width, mais on assure le min-width */
     min-width: 0;
 
     /* Fond dégradé sombre + texture subtile */
@@ -22,9 +22,10 @@
     flex-direction: column;
     gap: 16px;
 
-    /* IMPORTANT : On laisse visible pour que le bouton citrouille dépasse */
+    /* IMPORTANT : On force visible pour que le bouton citrouille dépasse */
     overflow: visible !important;
 
+    /* Transitions fluides */
     transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), padding 0.3s, border 0.3s;
     z-index: 10;
 }
@@ -32,10 +33,11 @@
 /* --- ETAT FERMÉ --- */
 .sidebar.collapsed {
     padding: 0 !important;
-    /* On cache la bordure quand fermé pour que le bouton colle au bord écran */
+    /* On cache la bordure quand fermé pour que le bouton colle parfaitement au bord écran */
     border-right: none !important;
 }
 
+/* Conteneur interne pour masquer le contenu quand ça ferme */
 .sidebar-content {
     overflow: hidden;
     width: 100%;
@@ -52,23 +54,19 @@
     pointer-events: none;
 }
 
-/* --- BOUTON DEMI-CITROUILLE --- */
-/* Note: L'utilisation de !important est requise ici car le TSX contient des styles inline */
+/* --- BOUTON DEMI-CITROUILLE (CORRECTIF MAJEUR) --- */
+/* L'utilisation de !important est OBLIGATOIRE ici car le fichier TSX
+   contient des styles inline (background, border, position) qui sont prioritaires sinon. */
 .collapse-btn {
-    /* Positionnement : On force pour qu'il soit toujours collé à la tranche */
+    /* 1. On force la Position et la Taille */
     position: absolute !important;
     top: 20px !important;
-    right: -34px !important; /* On force le dépassement vers la droite */
-    z-index: 100 !important;
-
-    /* Dimensions Citrouille */
+    right: -34px !important; /* On le force à sortir de la sidebar (34px de large) */
     width: 34px !important;
     height: 46px !important;
+    z-index: 100 !important;
 
-    /* Forme en D */
-    border-radius: 0 23px 23px 0 !important;
-
-    /* Texture Citrouille (Surcharge le gris du TSX) */
+    /* 2. On force l'apparence Citrouille (écrase le gris du TSX) */
     background:
             repeating-linear-gradient(
                     90deg,
@@ -79,17 +77,20 @@
             ),
             linear-gradient(to right, #d35400, #ff8c00) !important;
 
-    /* Bordures */
+    /* 3. On force la forme et les bordures */
+    border-radius: 0 23px 23px 0 !important; /* Forme en D */
     border: 2px solid #5d2e08 !important;
-    border-left: none !important;
+    border-left: none !important; /* Fusion visuelle avec la sidebar */
 
-    color: #3e2723 !important;
+    /* 4. On force les styles de contenu (flexbox et couleur) */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    color: #3e2723 !important;
     cursor: pointer !important;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.5) !important;
 
+    /* Animation (ne pas mettre !important ici pour laisser Framer Motion travailler si besoin) */
     transition: transform 0.2s, background-color 0.2s;
 }
 
@@ -119,6 +120,7 @@
     border-bottom: 2px solid #5c0a61;
     filter: drop-shadow(0 0 2px #5c0a61) drop-shadow(0 0 4px #5c0a61);
     transition: transform 0.3s;
+    /* Correction positionnement visuel */
     margin-right: 4px;
 }
 
@@ -127,8 +129,7 @@
 /* Flèche vers la gauche (pour fermer) */
 .chevron.left { transform: rotate(135deg); margin-right: -4px; }
 
-
-/* --- Search, Tree, Handle (Reste du fichier standard) --- */
+/* --- RESTE DES STYLES (Search, Tree, etc.) --- */
 .sidebar-top {
     display: flex;
     flex-direction: column;
@@ -159,6 +160,58 @@
     outline: none;
 }
 
+/* Arbre des fichiers */
+.tree {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+.tree::-webkit-scrollbar { width: 6px; }
+.tree::-webkit-scrollbar-track { background: #1a001a; }
+.tree::-webkit-scrollbar-thumb { background: #5c0a61; border-radius: 3px; }
+.tree::-webkit-scrollbar-thumb:hover { background: #ff8c00; }
+
+.tree-row {
+    display: flex; align-items: center; gap: 6px; height: 32px; user-select: none;
+}
+
+.disclosure {
+    width: 24px; height: 24px; display: grid; place-items: center;
+    background: transparent; border: none; cursor: pointer; color: #888;
+}
+.disclosure:hover { color: #fff; }
+.chev {
+    display: inline-block; width: 6px; height: 6px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg); transition: transform 0.2s;
+}
+.disclosure.open .chev { transform: rotate(45deg); }
+
+.tree-item {
+    flex: 1; display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+    border-radius: 4px; border: 1px solid transparent; background: transparent;
+    color: #bfaFbF; cursor: pointer; transition: all 0.2s ease;
+    text-align: left; font-size: 0.95rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tree-item:hover {
+    background: rgba(255, 255, 255, 0.05); color: #fff;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+.tree-item.active {
+    background: linear-gradient(90deg, rgba(255, 140, 0, 0.2), transparent);
+    border-left: 3px solid #ff8c00; color: #ffcc99;
+}
+
+.icon { font-size: 1.1rem; display: grid; place-items: center; filter: drop-shadow(0 0 3px rgba(0,0,0,0.5)); }
+.icon-glow { color: #ff8c00; filter: drop-shadow(0 0 5px #ff8c00); }
+.label { overflow: hidden; text-overflow: ellipsis; font-family: 'Segoe UI', sans-serif; }
+
 .resize-handle {
     position: absolute; top: 0; right: 0; width: 5px; height: 100%;
     cursor: col-resize; z-index: 12;
@@ -166,10 +219,13 @@
 .resize-handle:hover { background: rgba(255, 140, 0, 0.5); }
 
 @media (max-width: 700px) {
+    .sidebar { width: 0 !important; }
     .resize-handle { display: none; }
 }
 
-/* --- MODALES --- */
+/* ========================================= */
+/* MODALES (Inchangé)                        */
+/* ========================================= */
 .modal-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(10, 0, 10, 0.85); backdrop-filter: blur(4px);
