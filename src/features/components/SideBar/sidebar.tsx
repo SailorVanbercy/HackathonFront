@@ -358,7 +358,7 @@ const Sidebar = forwardRef<SidebarHandle, object>((_props, ref) => {
                 onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
                 onRename={openRename}
                 onDelete={openDelete}
-                // @ts-expect-error
+                // @ts-ignore
                 onNewFolder={openCreateModal}
             />
 
