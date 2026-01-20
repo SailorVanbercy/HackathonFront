@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 // Pas connecté, ce n'est pas grave
                 console.error(e);
                 setUser(null);
+                navigate('login');
             } finally {
                 setIsLoading(false);
             }
