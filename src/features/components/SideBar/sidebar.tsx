@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
-import { getAllDirectories, type DirectoryDTO, createDirectory } from "../../services/directories/directoryService";
+import {
+    getAllDirectories,
+    type DirectoryDTO,
+    createDirectory,
+    deleteDirectory
+} from "../../services/directories/directoryService";
 import type {TreeNode, FlatItem} from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
@@ -41,18 +46,16 @@ const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNod
         return node;
     });
 };
-const removeNode = (nodes: TreeNode[], id: string): TreeNode[] => {
-    return nodes.filter(node => node.id !== id).map(node => {
-        if (node.children) return { ...node, children: removeNode(node.children, id) };
-        return node;
-    });
-};
+
+
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 // MODIFICATION : 0 pour cacher complètement la sidebar
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
-const Sidebar = () => {
+// --- COMPOSANT WRAPPÉ DANS FORWARDREF ---
+// @ts-expect-error
+const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
     // --- STATE DONNEES ---
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -80,6 +83,15 @@ const Sidebar = () => {
 
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
+
+    // --- EXPOSITION AU PARENT ---
+    // C'est ici que la magie opère : on expose la fonction openCreateModal vers l'extérieur
+    useImperativeHandle(ref, () => ({
+        openCreateModal: () => {
+            // On appelle la fonction interne d'ouverture (à la racine par défaut)
+            openCreateModal(null);
+        }
+    }));
 
     // --- CHARGEMENT ---
     const refreshTree = async () => {
@@ -233,12 +245,21 @@ const Sidebar = () => {
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    const submitDelete = () => {
-        if (actionItemId) {
-            setTreeData(prev => removeNode(prev, actionItemId));
+    const submitDelete = async () => {
+        try {
+            let id;
+            if (actionItemId != null) {
+                id = parseInt(actionItemId)
+            }
+            // @ts-expect-error
+            await deleteDirectory(id);
+        }catch (e) {
+            console.error(e);
+        }finally {
             setIsDeleteOpen(false);
-            setActionItemId(null);
+            refreshTree();
         }
+
     };
 
     // --- GESTION RESIZE ---
