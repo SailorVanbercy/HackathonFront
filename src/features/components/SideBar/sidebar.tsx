@@ -14,12 +14,11 @@ import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal, ExportModal } from "./SideBarPart/SidebarModals";
 
-// --- HOOKS (Le Cerveau) ---
+// --- HOOKS ---
 import { useSidebarTree } from "./hooks/useSidebarTree";
-import { useSidebarModals } from "./hooks/useSidebarModals";
+import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals"; // Import CreationType
 import { useSidebarActions } from "./hooks/useSidebarActions";
 
-// Interface exposée au composant parent (HomePage)
 export interface SidebarHandle {
     openCreateModal: () => void;
     openExportModal: () => void;
@@ -29,21 +28,19 @@ const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
-// --- COMPOSANT PRINCIPAL ---
 const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
 
     // 1. Initialisation des Hooks
-    const tree = useSidebarTree(); // Gestion de l'arbre, recherche, expansion
-    const modals = useSidebarModals(); // Gestion de l'état des fenêtres modales
+    const tree = useSidebarTree();
+    const modals = useSidebarModals();
 
-    // Actions : fait le pont entre les modales et le rafraîchissement de l'arbre
     const actions = useSidebarActions({
         refreshTree: tree.refreshTree,
         modals,
         setExpanded: tree.setExpanded
     });
 
-    // 2. State UI local (Purement visuel)
+    // 2. State UI local
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; targetId: string | null }>({ x: 0, y: 0, targetId: null });
@@ -51,17 +48,19 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
 
-    // 3. Handlers UI (Interactions locales)
+    // 3. Handlers UI
     const toggleCollapse = () => setIsCollapsed(s => !s);
 
-    const handleContextMenu = (e: React.MouseEvent, id: string) => {
+    // On passe le type (directory/note) au context menu pour savoir quoi afficher
+    const handleContextMenu = (e: React.MouseEvent, id: string, type: 'directory' | 'note') => {
         e.preventDefault();
+        // On peut stocker le type dans l'état si on veut filtrer les options du menu
+        // Pour l'instant on ouvre juste le menu
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id });
     };
 
-    // Fonctions intermédiaires pour préparer les données avant d'ouvrir les modales
     const handleOpenRename = (id: string) => {
-        const node = tree.allNodes.find(n => n.id === id);
+        const node = tree.allNodes.find((n: { id: string; }) => n.id === id);
         if (node) {
             modals.openRenameModal(id, node.name);
             setContextMenu(p => ({ ...p, targetId: null }));
@@ -74,24 +73,24 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
     };
 
     const handleOpenExport = (id: string | null) => {
-        // On récupère le nom pour l'afficher joliment dans la modale
-        const node = id ? tree.allNodes.find(n => n.id === id) : null;
+        const node = id ? tree.allNodes.find((n: { id: string; }) => n.id === id) : null;
         modals.openExportModal(id, node?.name);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    const handleOpenCreate = (parentId: string | null) => {
-        modals.openCreateModal(parentId);
+    // Gestion unifiée de la création (Dossier ou Note)
+    const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
+        modals.openCreateModal(type, parentId);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    // 4. Exposition des méthodes au parent via ref
+    // 4. Exposition au parent
     useImperativeHandle(ref, () => ({
-        openCreateModal: () => modals.openCreateModal(null),
+        openCreateModal: () => modals.openCreateModal('directory', null),
         openExportModal: () => modals.openExportModal(null)
     }));
 
-    // 5. Gestion du redimensionnement (Resize)
+    // 5. Resize Logic
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (!resizingRef.current || !sidebarRef.current) return;
@@ -111,7 +110,6 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
         };
     }, []);
 
-    // 6. Rendu
     return (
         <>
             <aside
@@ -138,8 +136,22 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
                             search={tree.search}
                             setSearch={tree.setSearch}
                             isCollapsed={isCollapsed}
-                            onOpenCreate={() => modals.openCreateModal(null)}
+                            onOpenCreate={() => handleOpenCreate(null, 'directory')} // Par défaut bouton header = Nouveau Dossier
                         />
+
+                        {/* Bouton rapide pour créer une Note à la racine (optionnel mais pratique) */}
+                        <div style={{ padding: '0 10px 10px 10px' }}>
+                            <button
+                                onClick={() => handleOpenCreate(null, 'note')}
+                                style={{
+                                    width: '100%', padding: '6px', background: '#2a0a2e',
+                                    border: '1px dashed #bfaFbF', color: '#bfaFbF', borderRadius: '6px',
+                                    cursor: 'pointer', fontSize: '0.8rem'
+                                }}
+                            >
+                                + Nouvelle Page
+                            </button>
+                        </div>
 
                         <SidebarTree
                             isLoading={tree.isLoading}
@@ -177,11 +189,13 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
                 onRename={handleOpenRename}
                 onDelete={handleOpenDelete}
                 onExport={handleOpenExport}
-                // @ts-expect-error - legacy prop type check handling
-                onNewFolder={handleOpenCreate}
+                // @ts-expect-error - onNewFolder gère maintenant le type
+                onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')}
+                // Tu devras ajouter une prop onNewNote dans ContextMenu.tsx si tu veux le clic droit "Nouvelle Note"
+                // ou ruser en passant une fonction custom ici
             />
 
-            {/* Modales - Pilotées par le Hook modals et actions */}
+            {/* Modales */}
             <CreateFolderModal
                 isOpen={modals.isCreateOpen}
                 onClose={() => modals.setIsCreateOpen(false)}
@@ -191,8 +205,10 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
                 parentId={modals.targetParentId}
                 setParentId={modals.setTargetParentId}
                 treeData={tree.treeData}
+                // @ts-expect-error - On peut ajouter une prop 'title' ou 'type' à CreateFolderModal pour changer le texte
+                creationType={modals.creationType}
             />
-
+            {/* ... Autres modales inchangées ... */}
             <RenameModal
                 isOpen={modals.isRenameOpen}
                 onClose={() => modals.setIsRenameOpen(false)}
@@ -200,13 +216,11 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
                 value={modals.renameValue}
                 setValue={modals.setRenameValue}
             />
-
             <DeleteModal
                 isOpen={modals.isDeleteOpen}
                 onClose={() => modals.setIsDeleteOpen(false)}
                 onConfirm={actions.handleDeleteConfirm}
             />
-
             <ExportModal
                 isOpen={modals.isExportOpen}
                 onClose={() => modals.setIsExportOpen(false)}
