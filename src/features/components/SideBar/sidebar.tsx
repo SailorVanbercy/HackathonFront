@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
@@ -376,6 +376,6 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
             />
         </>
     );
-};
+});
 
 export default Sidebar;
