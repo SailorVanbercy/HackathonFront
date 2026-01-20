@@ -9,18 +9,19 @@ import React, {
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
+// AJOUT : Import de updateDirectory
 import {
     getAllDirectories,
     type DirectoryDTO,
     createDirectory,
-    deleteDirectory
+    deleteDirectory,
+    updateDirectory
 } from "../../services/directories/directoryService";
 import type { TreeNode, FlatItem } from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal } from "./SideBarPart/SidebarModals";
 
-// --- INTERFACE EXPORTÉE POUR LE PARENT ---
 export interface SidebarHandle {
     openCreateModal: () => void;
 }
@@ -120,15 +121,13 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
         const nodes: TreeNode[] = [];
         const stack: Array<{ node: TreeNode; parent: string | null }> = [];
 
-        // Sécurité boucle infinie
         let loopSafety = 0;
-
         for (let i = treeData.length - 1; i >= 0; i--) {
             stack.push({ node: treeData[i], parent: null });
         }
         while (stack.length) {
             loopSafety++;
-            if (loopSafety > 10000) break; // Protection crash
+            if (loopSafety > 10000) break;
 
             const popped = stack.pop();
             if (popped) {
@@ -154,7 +153,7 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                 set.add(node.id);
                 let cur = node.id;
                 let depth = 0;
-                while (depth < 50) { // Protection
+                while (depth < 50) {
                     const p = parentById.get(cur);
                     if (!p) break;
                     set.add(p);
@@ -218,7 +217,6 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
     };
 
     // --- HANDLERS MODALES ---
-    // NOTE: Définis avant le useImperativeHandle pour éviter le ReferenceError
     const openCreateModal = (parentId: string | null) => {
         setNewFolderName("");
         setTargetParentId(parentId || "root");
@@ -251,12 +249,27 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    const submitRename = (e: React.FormEvent) => {
+    // --- MODIFICATION ICI : Appel au nouveau service updateDirectory ---
+    const submitRename = async (e: React.FormEvent) => {
         e.preventDefault();
         if (actionItemId && renameValue.trim()) {
-            setTreeData(prev => updateNodeName(prev, actionItemId, renameValue));
-            setIsRenameOpen(false);
-            setActionItemId(null);
+            try {
+                // Le backend attend { id, name }
+                await updateDirectory({
+                    id: parseInt(actionItemId),
+                    name: renameValue
+                });
+
+                // On recharge l'arbre pour voir le changement
+                await refreshTree();
+
+                // On ferme la modale
+                setIsRenameOpen(false);
+                setActionItemId(null);
+            } catch (error) {
+                console.error("Erreur lors du renommage", error);
+                alert("Impossible de renommer ce parchemin !");
+            }
         }
     };
 
@@ -268,21 +281,19 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
 
     const submitDelete = async () => {
         try {
-            let id;
             if (actionItemId != null) {
-                id = parseInt(actionItemId)
-                await deleteDirectory(id);
+                await deleteDirectory(parseInt(actionItemId));
             }
         } catch (e) {
             console.error(e);
+            alert("Impossible de détruire ce dossier !");
         } finally {
             setIsDeleteOpen(false);
             await refreshTree();
         }
     };
 
-    // --- EXPOSITION AU PARENT (CORRECTIF ICI) ---
-    // Doit être placé APRES la définition de openCreateModal
+    // --- EXPOSITION AU PARENT ---
     useImperativeHandle(ref, () => ({
         openCreateModal: () => {
             openCreateModal(null);
@@ -316,10 +327,9 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                 className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
                 style={{
                     width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth,
-                    position: 'relative' // Important pour le bouton absolute
+                    position: 'relative'
                 }}
             >
-                {/* BOUTON SORTI POUR RESTER VISIBLE MEME SI WIDTH=0 */}
                 <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
@@ -328,7 +338,7 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                     title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}
                     style={{
                         position: 'absolute',
-                        right: isCollapsed ? -40 : 10, // On le pousse dehors si fermé
+                        right: isCollapsed ? -40 : 10,
                         top: 10,
                         zIndex: 100,
                         width: '30px',
