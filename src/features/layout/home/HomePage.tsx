@@ -1,15 +1,15 @@
-import React from "react";
+import React, { useRef } from "react"; // 1. Import de useRef
 import { motion } from "framer-motion";
 import "./HomePage.css";
 
-// Attention aux chemins : vérifie s'il faut "../" ou "../../" selon ton dossier réel
-import Sidebar from "../../components/SideBar/sidebar.tsx";
+// 2. Import du composant ET du type SidebarHandle
+// Note : Chemin ajusté à "../components/sidebar" basé sur la structure standard
+import Sidebar, { type SidebarHandle } from "../../components/SideBar/sidebar.tsx";
 import { Bats } from "../../components/Bats/Bats.tsx";
 import { Ghost } from "../../components/Ghost/Ghost.tsx";
 
-// 1. NOUVEAUX IMPORTS NÉCESSAIRES
-import { useAuth } from "../../context/AuthContext"; // Vérifie le chemin (../ ou ../../)
-import { useNavigate } from "react-router";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router"; // Utilisation de react-router-dom recommandée
 
 interface HomePageProps {
     user: string;
@@ -31,19 +31,28 @@ const recentNotes = [
     { id: 3, title: "Liste des victimes", date: "28 Oct", excerpt: "Ne pas oublier Crespin..." },
 ];
 
-const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent }) => {
+const HomePage: React.FC<HomePageProps> = ({ user, onOpenRecent }) => {
 
-    // 2. RECUPERATION DU CONTEXTE ET NAVIGATION
+    // 3. CRÉATION DE LA RÉFÉRENCE
+    const sidebarRef = useRef<SidebarHandle>(null);
+
     const { logout } = useAuth();
     const navigate = useNavigate();
 
     // Fonction de déconnexion
     const handleLogout = async () => {
         try {
-            await logout(); // Vide le cookie et le state user
-            navigate("/login"); // Redirige vers la page de login
+            await logout();
+            navigate("/login");
         } catch (error) {
             console.error("Erreur lors de la fuite:", error);
+        }
+    };
+
+    // 4. HANDLER POUR OUVRIR LA MODALE VIA LA REF
+    const handleCreateClick = () => {
+        if (sidebarRef.current) {
+            sidebarRef.current.openCreateModal();
         }
     };
 
@@ -63,7 +72,8 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                 transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
 
-            <Sidebar />
+            {/* 5. ATTACHEMENT DE LA REF À LA SIDEBAR */}
+            <Sidebar ref={sidebarRef} />
 
             <motion.main
                 className="main-area"
@@ -92,7 +102,8 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                 <div className="main-actions">
                     <motion.button
                         className="halloween-btn"
-                        onClick={onCreateFolder}
+                        // 6. UTILISATION DU NOUVEAU HANDLER
+                        onClick={handleCreateClick}
                         variants={spookyShake}
                         whileHover="hover"
                         whileTap={{ scale: 0.95 }}
@@ -116,7 +127,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                         💀 Ouvrir la Crypte
                     </motion.button>
 
-                    {/* 3. LE NOUVEAU BOUTON DE DECONNEXION */}
                     <motion.button
                         className="halloween-btn"
                         onClick={handleLogout}
@@ -125,7 +135,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                         whileTap={{ scale: 0.95 }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ duration: ANIM_DURATION, delay: 0.4 }} // Délai un peu plus long pour l'effet cascade
+                        transition={{ duration: ANIM_DURATION, delay: 0.4 }}
                         style={{
                             borderColor: '#ff4444',
                             boxShadow: '0 0 8px rgba(255, 68, 68, 0.4)',
