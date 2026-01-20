@@ -7,6 +7,7 @@ import HomePage from "./features/layout/home/HomePage.tsx";
 import Footer from "./features/components/Footer/Footer.tsx";
 import { GiTorch } from "react-icons/gi";
 import NoteDetails from "./features/components/NoteDetails.tsx";
+import {RequireAuth} from "./shared/utils/RequireAuth.tsx";
 
 function App() {
   // --- États pour la Torche ---
@@ -88,16 +89,14 @@ function App() {
       <Routes>
         <Route path={"/login"} element={<LoginPage />} />
         <Route path={"/register"} element={<RegisterPage />} />
-        <Route
-          path={"/home"}
-          element={
-            <HomePage
-              user={""}
-              onCreateFolder={() => console.log("Créer dossier")}
-              onOpenRecent={() => console.log("Ouvrir récent")}
+        <Route element={<RequireAuth/>}>
+            <Route
+              path={"/home"}
+              element={
+                <HomePage/>
+              }
             />
-          }
-        />
+        </Route>
         <Route path={"/"} element={<LoginPage />}></Route>
         <Route path="/note" element={<NoteDetails />}></Route>
       </Routes>

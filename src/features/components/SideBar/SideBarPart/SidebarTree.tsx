@@ -92,7 +92,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
 
                             <button
                                 className={`tree-item ${isActive ? "active" : ""} ${item.type}`}
-                                onClick={() => handleClick(item)}
+
+                                onDoubleClick={() => handleClick(item)}
                             >
                                 <span className="icon">
                                     {getIcon(item.type, item.hasChildren, isOpen && item.hasChildren)}
