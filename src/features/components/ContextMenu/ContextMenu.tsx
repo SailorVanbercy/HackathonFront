@@ -9,9 +9,10 @@ interface ContextMenuProps {
     onClose: () => void;
     onRename: (id: string) => void;
     onDelete: (id: string) => void;
+    onExport: (id: string) => void; // AJOUT
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClose, onRename, onDelete }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClose, onRename, onDelete, onExport }) => {
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Fermer si on clique ailleurs
@@ -27,8 +28,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClos
     }, [onClose]);
 
     useEffect(() => {
-        const handleKeyDown = (e : KeyboardEvent) => {
-            if(e.key === "Escape")
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape")
                 onClose();
         };
         window.addEventListener("keydown", handleKeyDown);
@@ -62,13 +63,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClos
                 }}
             >
                 <MenuButton onClick={() => onRename(targetId)} icon={<GiQuill />} label="Renommer" />
+
+                {/* Bouton Exporter ajouté */}
+                <MenuButton onClick={() => onExport(targetId)} icon={<GiShare />} label="Exporter" />
+
+                <div style={{ height: '1px', background: '#5c0a61', margin: '4px 0' }} />
+
                 <MenuButton onClick={() => onDelete(targetId)} icon={<GiTrashCan />} label="Jeter au feu" danger />
-                <MenuButton onClick={() => alert("Export en cours...")} icon={<GiShare />} label="Exporter" />
             </motion.div>
         </AnimatePresence>
     );
 };
 
+// Composant interne helper pour les boutons
 const MenuButton = ({ onClick, icon, label, danger }: any) => (
     <button
         onClick={onClick}
