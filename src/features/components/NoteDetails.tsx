@@ -1,24 +1,26 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import TurndownService from "turndown"; // <--- 1. IMPORT DU CONVERTISSEUR
+import Link from "@tiptap/extension-link"; // <--- NOUVEL IMPORT
+import TurndownService from "turndown";
 import { useNavigate } from "react-router";
+import { useCallback } from "react"; // Pour optimiser la fonction du lien
 import "./NoteDetails.css";
 
 const NoteDetails = () => {
   const navigate = useNavigate();
 
-  // Configuration de Tiptap (Plus simple, plus d'extension markdown ici)
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      // Configuration des liens
+      Link.configure({
+        openOnClick: false, // Empêche d'ouvrir le lien quand on clique dessus pour l'éditer
+        autolink: true, // Convertit automatiquement les URL tapées (ex: www.google.com)
+      }),
+    ],
     content: `
       <h1>Le Grimoire des Ombres</h1>
-      <p>Bienvenue, sorcier. Ce parchemin est magique :</p>
-      <ul>
-        <li>Tapez <code># </code> pour un grand titre</li>
-        <li>Tapez <code>- </code> pour une liste</li>
-        <li>Tapez <code>> </code> pour une citation mystique</li>
-      </ul>
-      <p>Essayez d'écrire ci-dessous...</p>
+      <p>Bienvenue. Essayez d'ajouter un <a href="https://fr.wikipedia.org/wiki/Magie_(surnaturel)">lien magique</a> ici.</p>
     `,
     editorProps: {
       attributes: {
@@ -27,30 +29,48 @@ const NoteDetails = () => {
     },
   });
 
+  // Fonction pour ajouter ou modifier un lien
+  const setLink = useCallback(() => {
+    if (!editor) return;
+
+    const previousUrl = editor.getAttributes("link").href;
+    // Demande l'URL à l'utilisateur via une fenêtre native
+    const url = window.prompt("URL du lien magique :", previousUrl);
+
+    // Si annulé, on ne fait rien
+    if (url === null) {
+      return;
+    }
+
+    // Si vide, on retire le lien
+    if (url === "") {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+
+    // Sinon, on applique le lien
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }, [editor]);
+
   const handleLogContent = () => {
     if (!editor) return;
 
-    // 1. Récupérer le HTML (Ça marche toujours)
     const html = editor.getHTML();
 
-    // 2. Convertir le HTML en Markdown via Turndown
     const turndownService = new TurndownService({
-      headingStyle: "atx", // Force les titres avec des # au lieu de soulignés
-      codeBlockStyle: "fenced", // Utilise ``` pour le code
+      headingStyle: "atx",
+      codeBlockStyle: "fenced",
     });
 
+    // Turndown gère nativement les liens <a> vers [text](url)
     const markdown = turndownService.turndown(html);
 
     console.group("🔮 Contenu Capturé");
-    console.log("%c HTML (Pour le site) :", "color: orange;", html);
-    console.log(
-      "%c MARKDOWN (Pour la BDD) :",
-      "color: cyan; font-weight: bold;",
-      markdown,
-    );
+    console.log("%c HTML :", "color: orange;", html);
+    console.log("%c MARKDOWN :", "color: cyan; font-weight: bold;", markdown);
     console.groupEnd();
 
-    alert("Incantation capturée ! Vérifiez la console (F12).");
+    alert("Incantation capturée ! Vérifiez la console.");
   };
 
   if (!editor) {
@@ -65,6 +85,7 @@ const NoteDetails = () => {
         </button>
 
         <div className="grim-toolbar">
+          {/* Bouton Gras */}
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`tool-btn ${editor.isActive("bold") ? "active" : ""}`}
@@ -72,6 +93,8 @@ const NoteDetails = () => {
           >
             B
           </button>
+
+          {/* Bouton Italique */}
           <button
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`tool-btn ${editor.isActive("italic") ? "active" : ""}`}
@@ -79,6 +102,17 @@ const NoteDetails = () => {
           >
             I
           </button>
+
+          {/* --- NOUVEAU BOUTON LIEN --- */}
+          <button
+            onClick={setLink}
+            className={`tool-btn ${editor.isActive("link") ? "active" : ""}`}
+            title="Ajouter un lien"
+          >
+            🔗
+          </button>
+          {/* --------------------------- */}
+
           <button
             onClick={() =>
               editor.chain().focus().toggleHeading({ level: 1 }).run()
