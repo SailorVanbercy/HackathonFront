@@ -85,6 +85,10 @@ function App() {
                         />
                     }
                 />
+                <Route
+                    path={"/"}
+                    element={<LoginPage/>}
+                ></Route>
             </Routes>
 
             <Footer />
