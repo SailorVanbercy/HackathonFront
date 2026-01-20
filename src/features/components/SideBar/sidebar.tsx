@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
@@ -12,14 +12,6 @@ import type {TreeNode, FlatItem} from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal } from "./SideBarPart/SidebarModals";
-
-
-// --- TYPES EXPORTÉS ---
-// C'est ce type que la HomePage va utiliser pour typer la "ref"
-export interface SidebarHandle {
-    openCreateModal: () => void;
-}
-
 // --- HELPERS LOGIQUES ---
 const getDescendantIds = (node: TreeNode, ids: string[] = []) => {
     if (node.children) {
@@ -30,17 +22,12 @@ const getDescendantIds = (node: TreeNode, ids: string[] = []) => {
     }
     return ids;
 };
-
 const buildTree = (directories: DirectoryDTO[]): TreeNode[] => {
     const map = new Map<string, TreeNode>();
     const roots: TreeNode[] = [];
-
-    // Initialisation
     directories.forEach(dir => {
         map.set(String(dir.id), { id: String(dir.id), name: dir.name, children: [] });
     });
-
-    // Reconstruction
     directories.forEach(dir => {
         const node = map.get(String(dir.id));
         if (!node) return;
@@ -52,7 +39,6 @@ const buildTree = (directories: DirectoryDTO[]): TreeNode[] => {
     });
     return roots;
 };
-
 const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNode[] => {
     return nodes.map(node => {
         if (node.id === id) return { ...node, name: newName };
@@ -64,7 +50,8 @@ const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNod
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
-const SIDEBAR_COLLAPSED_WIDTH = 72;
+// MODIFICATION : 0 pour cacher complètement la sidebar
+const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 // --- COMPOSANT WRAPPÉ DANS FORWARDREF ---
 // @ts-expect-error
@@ -126,11 +113,9 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
         const parent = new Map<string, string | null>();
         const nodes: TreeNode[] = [];
         const stack: Array<{ node: TreeNode; parent: string | null }> = [];
-
         for (let i = treeData.length - 1; i >= 0; i--) {
             stack.push({ node: treeData[i], parent: null });
         }
-
         while (stack.length) {
             const popped = stack.pop();
             if (popped) {
@@ -176,19 +161,11 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
             const popped = stack.pop();
             if (popped) {
                 const { node, depth } = popped;
-                const matches = !matchSet || matchSet.has(node.id);
-
-                if (matches) {
-                    list.push({
-                        id: node.id,
-                        name: node.name,
-                        depth,
-                        hasChildren: !!(node.children && node.children.length > 0)
-                    });
+                if (!matchSet || matchSet.has(node.id)) {
+                    list.push({ id: node.id, name: node.name, depth, hasChildren: !!node.children?.length });
                 }
-
                 const isOpen = matchSet ? matchSet.has(node.id) : expanded[node.id];
-                if (node.children && node.children.length > 0 && isOpen) {
+                if (!!node.children?.length && isOpen) {
                     for (let i = node.children.length - 1; i >= 0; i--) {
                         stack.push({ node: node.children[i], depth: depth + 1 });
                     }
@@ -257,7 +234,6 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
         e.preventDefault();
         if (actionItemId && renameValue.trim()) {
             setTreeData(prev => updateNodeName(prev, actionItemId, renameValue));
-            // TODO: Appel API
             setIsRenameOpen(false);
             setActionItemId(null);
         }
@@ -318,33 +294,36 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
                     whileTap={{ scale: 0.9 }}
                     className="collapse-btn"
                     onClick={toggleCollapse}
+                    title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}
                 >
                     <span className={`chevron ${isCollapsed ? "right" : "left"}`} />
                 </motion.button>
 
-                <div className="sidebar-content">
-                    {/* Header: Recherche + Bouton Nouveau */}
-                    <SidebarHeader
-                        search={search}
-                        setSearch={setSearch}
-                        isCollapsed={isCollapsed}
-                        onOpenCreate={() => openCreateModal(null)}
-                    />
+                {/* MODIFICATION: On affiche le contenu SEULEMENT si non-collapsed */}
+                {!isCollapsed && (
+                    <div className="sidebar-content">
+                        <SidebarHeader
+                            search={search}
+                            setSearch={setSearch}
+                            isCollapsed={isCollapsed}
+                            onOpenCreate={() => openCreateModal(null)}
+                        />
 
-                    {/* Arbre des fichiers */}
-                    <SidebarTree
-                        isLoading={isLoading}
-                        visibleItems={visibleItems}
-                        expanded={expanded}
-                        matchSet={matchSet}
-                        activeId={activeId}
-                        isCollapsed={isCollapsed}
-                        onToggleExpand={toggleExpand}
-                        onSelect={setActiveId}
-                        onContextMenu={handleContextMenu}
-                    />
-                </div>
+                        <SidebarTree
+                            isLoading={isLoading}
+                            visibleItems={visibleItems}
+                            expanded={expanded}
+                            matchSet={matchSet}
+                            activeId={activeId}
+                            isCollapsed={isCollapsed}
+                            onToggleExpand={toggleExpand}
+                            onSelect={setActiveId}
+                            onContextMenu={handleContextMenu}
+                        />
+                    </div>
+                )}
 
+                {/* La poignée de resize est aussi cachée si c'est fermé */}
                 {!isCollapsed && (
                     <div
                         className="resize-handle"
@@ -358,7 +337,7 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
                 )}
             </aside>
 
-            {/* Menu Clic Droit */}
+            {/* Menu Contextuel */}
             <ContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
@@ -397,6 +376,6 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
             />
         </>
     );
-});
+};
 
 export default Sidebar;

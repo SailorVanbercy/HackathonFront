@@ -1,15 +1,10 @@
-import React, { useRef } from "react"; // 1. Import de useRef
+import React from "react";
 import { motion } from "framer-motion";
 import "./HomePage.css";
 
-// 2. Import du composant ET du type SidebarHandle
-// Note : Chemin ajusté à "../components/sidebar" basé sur la structure standard
-import Sidebar, { type SidebarHandle } from "../../components/SideBar/sidebar.tsx";
-import { Bats } from "../../components/Bats/Bats.tsx";
-import { Ghost } from "../../components/Ghost/Ghost.tsx";
-
-import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router"; // Utilisation de react-router-dom recommandée
+import Sidebar from "../../components/SideBar/sidebar";
+import { Bats } from "../../components/Bats/Bats";
+import { Ghost } from "../../components/Ghost/Ghost";
 
 interface HomePageProps {
     user: string;
@@ -17,7 +12,6 @@ interface HomePageProps {
     onOpenRecent: () => void;
 }
 
-// --- CONSTANTES D'ANIMATION UNIFORMES ---
 const ANIM_DURATION = 0.6;
 const ANIM_EASE = "easeOut";
 
@@ -31,31 +25,7 @@ const recentNotes = [
     { id: 3, title: "Liste des victimes", date: "28 Oct", excerpt: "Ne pas oublier Crespin..." },
 ];
 
-const HomePage: React.FC<HomePageProps> = ({ user, onOpenRecent }) => {
-
-    // 3. CRÉATION DE LA RÉFÉRENCE
-    const sidebarRef = useRef<SidebarHandle>(null);
-
-    const { logout } = useAuth();
-    const navigate = useNavigate();
-
-    // Fonction de déconnexion
-    const handleLogout = async () => {
-        try {
-            await logout();
-            navigate("/login");
-        } catch (error) {
-            console.error("Erreur lors de la fuite:", error);
-        }
-    };
-
-    // 4. HANDLER POUR OUVRIR LA MODALE VIA LA REF
-    const handleCreateClick = () => {
-        if (sidebarRef.current) {
-            sidebarRef.current.openCreateModal();
-        }
-    };
-
+const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent }) => {
     return (
         <div className="home-root">
             <Ghost />
@@ -72,8 +42,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onOpenRecent }) => {
                 transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
 
-            {/* 5. ATTACHEMENT DE LA REF À LA SIDEBAR */}
-            <Sidebar ref={sidebarRef} />
+            <Sidebar />
 
             <motion.main
                 className="main-area"
@@ -81,7 +50,8 @@ const HomePage: React.FC<HomePageProps> = ({ user, onOpenRecent }) => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: ANIM_DURATION, ease: ANIM_EASE }}
             >
-                {/* Titre et Sous-titre */}
+                {/* --- LE TITRE EST ICI (DANS MAIN-AREA) --- */}
+                {/* Il subira donc le décalage de la sidebar comme le reste */}
                 <motion.div
                     className="hero-center"
                     initial={{ y: -50, opacity: 0 }}
@@ -102,8 +72,7 @@ const HomePage: React.FC<HomePageProps> = ({ user, onOpenRecent }) => {
                 <div className="main-actions">
                     <motion.button
                         className="halloween-btn"
-                        // 6. UTILISATION DU NOUVEAU HANDLER
-                        onClick={handleCreateClick}
+                        onClick={onCreateFolder}
                         variants={spookyShake}
                         whileHover="hover"
                         whileTap={{ scale: 0.95 }}
@@ -125,24 +94,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onOpenRecent }) => {
                         transition={{ duration: ANIM_DURATION, delay: 0.3 }}
                     >
                         💀 Ouvrir la Crypte
-                    </motion.button>
-
-                    <motion.button
-                        className="halloween-btn"
-                        onClick={handleLogout}
-                        variants={spookyShake}
-                        whileHover="hover"
-                        whileTap={{ scale: 0.95 }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: ANIM_DURATION, delay: 0.4 }}
-                        style={{
-                            borderColor: '#ff4444',
-                            boxShadow: '0 0 8px rgba(255, 68, 68, 0.4)',
-                            marginLeft: '10px'
-                        }}
-                    >
-                        🚪 S'enfuir (Logout)
                     </motion.button>
                 </div>
 
