@@ -3,8 +3,8 @@ import './App.css';
 import LoginPage from "./features/layout/login/LoginPage.tsx";
 import { Route, Routes } from "react-router";
 import RegisterPage from "./features/layout/register/RegisterPage.tsx";
-import HomePage from "./features/layout/HomePage.tsx";
-import Footer from "./features/components/Footer.tsx";
+import HomePage from "./features/layout/home/HomePage.tsx";
+import Footer from "./features/components/Footer/Footer.tsx";
 import { GiTorch } from "react-icons/gi";
 
 function App() {
@@ -52,13 +52,13 @@ function App() {
                     position: 'fixed',
                     left: mousePos.x,
                     top: mousePos.y,
-                    pointerEvents: 'none', // Important: permet de cliquer au travers
-                    zIndex: 10000,         // Au-dessus de tout
-                    color: '#ffaa00',      // Couleur feu
-                    fontSize: '2rem',      // Taille
+                    pointerEvents: 'none',
+                    zIndex: 999999,
+                    color: '#ffaa00',
+                    fontSize: '2rem',
                     // Animation du "coup" de torche au clic
                     transform: `translate(-20%, -20%) rotate(${isClicking ? '-45deg' : '-15deg'}) scale(${isClicking ? 0.9 : 1})`,
-                    transition: 'transform 0.1s ease', // Mouvement vif
+                    transition: 'transform 0.1s ease',
                     filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.5))'
                 }}
             >
