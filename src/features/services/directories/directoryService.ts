@@ -14,7 +14,7 @@ export interface CreateDirectoryRequest{
 }
 
 export const getAllDirectories = async (): Promise<DirectoryDTO[]> => {
-    const response = await fetch(`${API_URL}/users/me`, {
+    const response = await fetch(`${API_URL}/me`, {
         method: 'GET',
         headers: {
             "Content-Type": "application/json"

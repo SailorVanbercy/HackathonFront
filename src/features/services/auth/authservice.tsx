@@ -4,6 +4,7 @@ import type {
     RegisterUserResponse,
     UserResponse
 } from "../../../shared/DTO/users/users.ts";
+import {type NavigateFunction, useNavigate} from "react-router";
 
 const API_URL =import.meta.env.VITE_API_URL + "/auth";
 const ME_URL =import.meta.env.VITE_API_URL + "/users";
@@ -58,4 +59,5 @@ export const logout = async () : Promise<void> => {
         },
         credentials: "include"
     });
+
 }

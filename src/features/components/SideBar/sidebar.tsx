@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import React, {
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState,
+    forwardRef
+} from "react";
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
@@ -8,11 +15,17 @@ import {
     createDirectory,
     deleteDirectory
 } from "../../services/directories/directoryService";
-import type {TreeNode, FlatItem} from "./SideBarPart/sidebarTypes";
+import type { TreeNode, FlatItem } from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal } from "./SideBarPart/SidebarModals";
-// --- HELPERS LOGIQUES ---
+
+// --- INTERFACE EXPORTÉE POUR LE PARENT ---
+export interface SidebarHandle {
+    openCreateModal: () => void;
+}
+
+// --- HELPERS ---
 const getDescendantIds = (node: TreeNode, ids: string[] = []) => {
     if (node.children) {
         node.children.forEach((child) => {
@@ -22,12 +35,16 @@ const getDescendantIds = (node: TreeNode, ids: string[] = []) => {
     }
     return ids;
 };
+
 const buildTree = (directories: DirectoryDTO[]): TreeNode[] => {
+    if (!directories) return [];
     const map = new Map<string, TreeNode>();
     const roots: TreeNode[] = [];
+
     directories.forEach(dir => {
         map.set(String(dir.id), { id: String(dir.id), name: dir.name, children: [] });
     });
+
     directories.forEach(dir => {
         const node = map.get(String(dir.id));
         if (!node) return;
@@ -39,6 +56,7 @@ const buildTree = (directories: DirectoryDTO[]): TreeNode[] => {
     });
     return roots;
 };
+
 const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNode[] => {
     return nodes.map(node => {
         if (node.id === id) return { ...node, name: newName };
@@ -47,15 +65,12 @@ const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNod
     });
 };
 
-
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
-// MODIFICATION : 0 pour cacher complètement la sidebar
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
-// --- COMPOSANT WRAPPÉ DANS FORWARDREF ---
-// @ts-expect-error
-const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
+// --- COMPOSANT ---
+const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
     // --- STATE DONNEES ---
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -84,15 +99,6 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
 
-    // --- EXPOSITION AU PARENT ---
-    // C'est ici que la magie opère : on expose la fonction openCreateModal vers l'extérieur
-    useImperativeHandle(ref, () => ({
-        openCreateModal: () => {
-            // On appelle la fonction interne d'ouverture (à la racine par défaut)
-            openCreateModal(null);
-        }
-    }));
-
     // --- CHARGEMENT ---
     const refreshTree = async () => {
         try {
@@ -108,15 +114,22 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
         refreshTree().finally(() => setIsLoading(false));
     }, []);
 
-    // --- MEMOIZATION & LOGIQUE ARBRE ---
+    // --- MEMOIZATION ---
     const { parentById, allNodes } = useMemo(() => {
         const parent = new Map<string, string | null>();
         const nodes: TreeNode[] = [];
         const stack: Array<{ node: TreeNode; parent: string | null }> = [];
+
+        // Sécurité boucle infinie
+        let loopSafety = 0;
+
         for (let i = treeData.length - 1; i >= 0; i--) {
             stack.push({ node: treeData[i], parent: null });
         }
         while (stack.length) {
+            loopSafety++;
+            if (loopSafety > 10000) break; // Protection crash
+
             const popped = stack.pop();
             if (popped) {
                 const { node, parent: p } = popped;
@@ -140,11 +153,13 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
             if (node.name.toLowerCase().includes(q)) {
                 set.add(node.id);
                 let cur = node.id;
-                while (true) {
+                let depth = 0;
+                while (depth < 50) { // Protection
                     const p = parentById.get(cur);
                     if (!p) break;
                     set.add(p);
                     cur = p;
+                    depth++;
                 }
             }
         }
@@ -157,7 +172,12 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
         for (let i = treeData.length - 1; i >= 0; i--) {
             stack.push({ node: treeData[i], depth: 0 });
         }
+
+        let loopSafety = 0;
         while (stack.length) {
+            loopSafety++;
+            if (loopSafety > 10000) break;
+
             const popped = stack.pop();
             if (popped) {
                 const { node, depth } = popped;
@@ -198,6 +218,7 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
     };
 
     // --- HANDLERS MODALES ---
+    // NOTE: Définis avant le useImperativeHandle pour éviter le ReferenceError
     const openCreateModal = (parentId: string | null) => {
         setNewFolderName("");
         setTargetParentId(parentId || "root");
@@ -250,17 +271,23 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
             let id;
             if (actionItemId != null) {
                 id = parseInt(actionItemId)
+                await deleteDirectory(id);
             }
-            // @ts-expect-error
-            await deleteDirectory(id);
-        }catch (e) {
+        } catch (e) {
             console.error(e);
-        }finally {
+        } finally {
             setIsDeleteOpen(false);
-            refreshTree();
+            await refreshTree();
         }
-
     };
+
+    // --- EXPOSITION AU PARENT (CORRECTIF ICI) ---
+    // Doit être placé APRES la définition de openCreateModal
+    useImperativeHandle(ref, () => ({
+        openCreateModal: () => {
+            openCreateModal(null);
+        }
+    }));
 
     // --- GESTION RESIZE ---
     useEffect(() => {
@@ -287,21 +314,39 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
             <aside
                 ref={sidebarRef}
                 className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
-                style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}
+                style={{
+                    width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth,
+                    position: 'relative' // Important pour le bouton absolute
+                }}
             >
+                {/* BOUTON SORTI POUR RESTER VISIBLE MEME SI WIDTH=0 */}
                 <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     className="collapse-btn"
                     onClick={toggleCollapse}
                     title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}
+                    style={{
+                        position: 'absolute',
+                        right: isCollapsed ? -40 : 10, // On le pousse dehors si fermé
+                        top: 10,
+                        zIndex: 100,
+                        width: '30px',
+                        height: '30px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#2d2d2d',
+                        border: '1px solid #444',
+                        borderRadius: '50%',
+                        cursor: 'pointer'
+                    }}
                 >
                     <span className={`chevron ${isCollapsed ? "right" : "left"}`} />
                 </motion.button>
 
-                {/* MODIFICATION: On affiche le contenu SEULEMENT si non-collapsed */}
                 {!isCollapsed && (
-                    <div className="sidebar-content">
+                    <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
                         <SidebarHeader
                             search={search}
                             setSearch={setSearch}
@@ -323,7 +368,6 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
                     </div>
                 )}
 
-                {/* La poignée de resize est aussi cachée si c'est fermé */}
                 {!isCollapsed && (
                     <div
                         className="resize-handle"
@@ -337,7 +381,6 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
                 )}
             </aside>
 
-            {/* Menu Contextuel */}
             <ContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
@@ -345,11 +388,10 @@ const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
                 onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
                 onRename={openRename}
                 onDelete={openDelete}
-                // @ts-ignore
+                // @ts-expect-error
                 onNewFolder={openCreateModal}
             />
 
-            {/* Les Modales */}
             <CreateFolderModal
                 isOpen={isCreateOpen}
                 onClose={() => setIsCreateOpen(false)}

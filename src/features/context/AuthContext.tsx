@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type {UserResponse, LoginRequest} from "../../shared/DTO/users/users";
 import {login as loginService, getCurrentUser, logout as logoutService} from "../services/auth/authservice";
+import {useNavigate} from "react-router";
 
 interface AuthContextType {
     user: UserResponse | null;
@@ -12,11 +13,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-
+    let navigate = useNavigate();
     // Au chargement de l'app, on vérifie si un cookie existe déjà
     useEffect(() => {
         const checkAuth = async () => {
@@ -43,12 +43,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         try {
             await logoutService();
         }catch (e) {
             console.error(e);
         }finally {
             setUser(null);
+            navigate('/login');
         }
     }
 
