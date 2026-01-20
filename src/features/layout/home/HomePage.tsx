@@ -1,131 +1,97 @@
-import React from "react";
-import { motion } from "framer-motion";
-import "./HomePage.css";
+import { useRef } from 'react';
+import Sidebar, { type SidebarHandle } from '../../components/SideBar/sidebar';
+import { useAuth } from '../../context/AuthContext';
+import './HomePage.css';
+import {Ghost} from "../../components/Ghost/Ghost.tsx";
+import {Bats} from "../../components/Bats/Bats.tsx";
 
-import Sidebar from "../../components/SideBar/sidebar";
-import { Bats } from "../../components/Bats/Bats";
-import { Ghost } from "../../components/Ghost/Ghost";
+export const HomePage = () => {
+    // 1. Référence vers la Sidebar pour ouvrir la modale
+    const sidebarRef = useRef<SidebarHandle>(null);
 
-interface HomePageProps {
-    user: string;
-    onCreateFolder: () => void;
-    onOpenRecent: () => void;
-}
+    // 2. Hook d'authentification pour le logout
+    const { logout } = useAuth();
 
-const ANIM_DURATION = 0.6;
-const ANIM_EASE = "easeOut";
+    // 3. Fonction pour déclencher l'ouverture du menu "Nouveau Dossier" via la Sidebar
+    const handleNewGrimoire = () => {
+        if (sidebarRef.current) {
+            sidebarRef.current.openCreateModal();
+        }
+    };
 
-const spookyShake = {
-    hover: { x: [0, -2, 2, -2, 2, 0], transition: { duration: 0.4 } }
-};
-
-const recentNotes = [
-    { id: 1, title: "Recette Potion de Vie", date: "31 Oct", excerpt: "Ingrédients: bave de crapaud..." },
-    { id: 2, title: "Rituel de la Lune", date: "30 Oct", excerpt: "Attendre minuit pile..." },
-    { id: 3, title: "Liste des victimes", date: "28 Oct", excerpt: "Ne pas oublier Crespin..." },
-];
-
-const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent }) => {
     return (
         <div className="home-root">
-            <Ghost />
-            <Bats />
+            <Ghost/>
+            <Bats/>
+            {/* La Sidebar avec la ref attachée */}
+            <Sidebar ref={sidebarRef} />
 
-            <motion.div
-                className="bg-orb orb-1"
-                animate={{ y: [0, -20, 0], opacity: [0.1, 0.4, 0.1] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-                className="bg-orb orb-2"
-                animate={{ y: [0, 30, 0], opacity: [0.1, 0.3, 0.1] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            />
+            <main className="main-area">
+                {/* --- DÉCORATION D'ARRIÈRE-PLAN --- */}
+                <div className="bg-orb orb-1" />
+                <div className="bg-orb orb-2" />
 
-            <Sidebar />
+                {/* --- TITRE --- */}
+                <div className="hero-center">
+                    <h1 className="home-title">
+                        Bienvenue, <span className="grimoire">Voyageur</span>
+                    </h1>
+                </div>
 
-            <motion.main
-                className="main-area"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: ANIM_DURATION, ease: ANIM_EASE }}
-            >
-                {/* --- LE TITRE EST ICI (DANS MAIN-AREA) --- */}
-                {/* Il subira donc le décalage de la sidebar comme le reste */}
-                <motion.div
-                    className="hero-center"
-                    initial={{ y: -50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: ANIM_DURATION, ease: ANIM_EASE }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                        <h1 className="home-title">
-                            🎃 <span className="grimoire">The Lost Grimoire</span>
-                        </h1>
-                        <p style={{ color: '#aaa', margin: 0, fontSize: '1.1rem', fontFamily: 'Cinzel, serif' }}>
-                            Prêt à écrire vos cauchemars {user} ?
-                        </p>
-                    </div>
-                </motion.div>
-
-                {/* Boutons d'action */}
+                {/* --- ACTIONS PRINCIPALES --- */}
                 <div className="main-actions">
-                    <motion.button
+                    {/* Bouton Nouveau Grimoire (Connecté à la Sidebar) */}
+                    <button
                         className="halloween-btn"
-                        onClick={onCreateFolder}
-                        variants={spookyShake}
-                        whileHover="hover"
-                        whileTap={{ scale: 0.95 }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: ANIM_DURATION, delay: 0.2 }}
+                        onClick={handleNewGrimoire}
                     >
-                        📁 Nouveau Grimoire
-                    </motion.button>
+                        ✨ Nouveau Grimoire
+                    </button>
 
-                    <motion.button
+                    {/* Bouton Logout (Connecté au AuthContext) */}
+                    <button
                         className="halloween-btn"
-                        onClick={onOpenRecent}
-                        variants={spookyShake}
-                        whileHover="hover"
-                        whileTap={{ scale: 0.95 }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: ANIM_DURATION, delay: 0.3 }}
+                        onClick={logout}
+                        style={{ borderColor: '#dc3545', color: '#ffb3b3' }}
                     >
-                        💀 Ouvrir la Crypte
-                    </motion.button>
+                        💀 Se déconnecter
+                    </button>
                 </div>
 
-                {/* Dashboard (Cartes) */}
-                <div className="recent-section">
-                    <h2 className="section-title">Dernières Incantations</h2>
+                {/* --- SECTION CARTES --- */}
+                <section className="recent-section">
+                    <h2 className="section-title">Vos écrits récents</h2>
+
                     <div className="cards-grid">
-                        {recentNotes.map((note, i) => (
-                            <motion.div
-                                key={note.id}
-                                className="spooky-card"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{
-                                    duration: ANIM_DURATION,
-                                    ease: ANIM_EASE,
-                                    delay: 0.2 + (i * 0.1)
-                                }}
-                                whileHover={{ scale: 1.05, rotate: 1 }}
-                            >
-                                <div className="card-header">
-                                    <span className="card-icon">📜</span>
-                                    <span className="card-date">{note.date}</span>
-                                </div>
-                                <h3>{note.title}</h3>
-                                <p>{note.excerpt}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
+                        <div className="spooky-card">
+                            <div className="card-header">
+                                <span>Aujourd'hui</span>
+                                <span>🌙</span>
+                            </div>
+                            <h3>Notes du Crépuscule</h3>
+                            <p>Une ébauche de sortilège pour invoquer la pluie...</p>
+                        </div>
 
-            </motion.main>
+                        <div className="spooky-card">
+                            <div className="card-header">
+                                <span>Hier</span>
+                                <span>🔮</span>
+                            </div>
+                            <h3>Potions Interdites</h3>
+                            <p>Ingrédients : Racine de mandragore, bave de crapaud...</p>
+                        </div>
+
+                        <div className="spooky-card">
+                            <div className="card-header">
+                                <span>Semaine dernière</span>
+                                <span>🕯️</span>
+                            </div>
+                            <h3>Rituels Anciens</h3>
+                            <p>Ne pas oublier d'allumer les bougies dans le sens anti-horaire.</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
     );
 };
