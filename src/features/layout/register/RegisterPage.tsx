@@ -40,7 +40,7 @@ export default function RegisterPage() {
 
 
         // min length
-        if (form.password.length < 6) return "Mot de passe trop court (min 6 caractères).";
+        if (form.password.length < 8) return "Mot de passe trop court (min 8 caractères).";
 
         return null;
     };
@@ -159,7 +159,7 @@ export default function RegisterPage() {
 
                         <div className="register-field">
                             <label className="register-label" htmlFor="password">
-                                Mot de passe -- Min. 6 caractères
+                                Mot de passe -- Min. 8 caractères
                             </label>
                             <input
                                 id="password"

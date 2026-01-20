@@ -118,7 +118,7 @@ export default function LoginPage() {
                             autoComplete="current-password"
                             placeholder="••••••••"
                         />
-                        <p className="login-hint">Min. 6 caractères</p>
+                        <p className="login-hint">Min. 8 caractères</p>
                     </div>
 
                     <button className="login-btn" type="submit" disabled={isSubmitting}>
