@@ -1,12 +1,17 @@
 import { useState } from "react";
 
+export type CreationType = 'directory' | 'note';
+
 export const useSidebarModals = () => {
     // --- CREATE ---
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
     const [targetParentId, setTargetParentId] = useState<string>("root");
+    // NOUVEAU : Savoir si on crée un dossier ou une note
+    const [creationType, setCreationType] = useState<CreationType>('directory');
 
-    const openCreateModal = (parentId: string | null = null) => {
+    const openCreateModal = (type: CreationType, parentId: string | null = null) => {
+        setCreationType(type);
         setNewFolderName("");
         setTargetParentId(parentId || "root");
         setIsCreateOpen(true);
@@ -48,6 +53,7 @@ export const useSidebarModals = () => {
         isCreateOpen, setIsCreateOpen,
         newFolderName, setNewFolderName,
         targetParentId, setTargetParentId,
+        creationType, setCreationType, // On expose ces nouveaux champs
         openCreateModal,
 
         // Rename

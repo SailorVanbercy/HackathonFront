@@ -1,7 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { GiSpellBook, GiFiles, GiScrollUnfurled } from "react-icons/gi";
-import type {FlatItem} from "./sidebarTypes";
+import { GiSpellBook, GiFiles, GiScrollUnfurled, GiFeather } from "react-icons/gi";
+import type { FlatItem } from "./sidebarTypes";
+import { useNavigate } from "react-router";
 
 interface SidebarTreeProps {
     isLoading: boolean;
@@ -12,10 +13,15 @@ interface SidebarTreeProps {
     isCollapsed: boolean;
     onToggleExpand: (id: string) => void;
     onSelect: (id: string) => void;
-    onContextMenu: (e: React.MouseEvent, id: string) => void;
+    // On ajoute le type ici pour savoir sur quoi on clique droit
+    onContextMenu: (e: React.MouseEvent, id: string, type: 'directory' | 'note') => void;
 }
 
-const getIcon = (hasChildren: boolean, isOpen: boolean) => {
+const getIcon = (type: 'directory' | 'note', hasChildren: boolean, isOpen: boolean) => {
+    if (type === 'note') {
+        return <GiFeather className="icon-note" />;
+    }
+    // Logique dossier existante
     if (hasChildren) {
         return isOpen ? <GiSpellBook className="icon-glow" /> : <GiFiles />;
     }
@@ -26,6 +32,24 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                                                             isLoading, visibleItems, expanded, matchSet, activeId, isCollapsed,
                                                             onToggleExpand, onSelect, onContextMenu
                                                         }) => {
+    const navigate = useNavigate();
+
+    const handleClick = (item: FlatItem) => {
+        onSelect(item.id);
+
+        if (item.type === 'directory') {
+            // Comportement dossier : on ouvre/ferme
+            if (item.hasChildren) {
+                onToggleExpand(item.id);
+            }
+        } else {
+            // Comportement note : on navigue
+            // L'ID dans l'arbre est "note-12", on veut juste "12" pour l'URL
+            const realId = item.id.replace('note-', '');
+            navigate(`/notes/${realId}`);
+        }
+    };
+
     return (
         <div className="tree">
             {isLoading ? (
@@ -49,21 +73,30 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                             animate={{ opacity: 1, x: 0 }}
                             className="tree-row"
                             style={{ paddingLeft: isCollapsed ? 8 : 8 + item.depth * 14 }}
-                            onContextMenu={(e) => onContextMenu(e, item.id)}
+                            onContextMenu={(e) => onContextMenu(e, item.id, item.type)}
                         >
-                            {item.hasChildren ? (
-                                <button className={`disclosure ${isOpen ? "open" : ""}`} onClick={() => onToggleExpand(item.id)}>
+                            {/* Flèche uniquement pour les dossiers avec enfants */}
+                            {item.type === 'directory' && item.hasChildren ? (
+                                <button
+                                    className={`disclosure ${isOpen ? "open" : ""}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleExpand(item.id);
+                                    }}
+                                >
                                     <span className="chev" />
                                 </button>
                             ) : (
                                 <span className="disclosure placeholder" />
                             )}
+
                             <button
-                                className={`tree-item ${isActive ? "active" : ""}`}
-                                onClick={() => onSelect(item.id)}
-                                onDoubleClick={() => item.hasChildren && onToggleExpand(item.id)}
+                                className={`tree-item ${isActive ? "active" : ""} ${item.type}`}
+                                onClick={() => handleClick(item)}
                             >
-                                <span className="icon">{getIcon(item.hasChildren, isOpen && item.hasChildren)}</span>
+                                <span className="icon">
+                                    {getIcon(item.type, item.hasChildren, isOpen && item.hasChildren)}
+                                </span>
                                 {!isCollapsed && <span className="label">{item.name}</span>}
                             </button>
                         </motion.div>
