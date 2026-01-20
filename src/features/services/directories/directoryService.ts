@@ -13,6 +13,11 @@ export interface CreateDirectoryRequest{
     parentDirectoryId : number | null;
 }
 
+export interface UpdateDirectoryDTO{
+    id:number;
+    name:string;
+}
+
 export const getAllDirectories = async (): Promise<DirectoryDTO[]> => {
     const response = await fetch(`${API_URL}/me`, {
         method: 'GET',
@@ -50,4 +55,15 @@ export const deleteDirectory = async (id : number) : Promise<void> => {
         },
         credentials: "include"
     });
+}
+
+export const updateDirectory = async (req : UpdateDirectoryDTO) : Promise<void> => {
+    const response = await fetch(API_URL, {
+            method: 'PUT',
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(req),
+            credentials: "include"
+        });
 }
