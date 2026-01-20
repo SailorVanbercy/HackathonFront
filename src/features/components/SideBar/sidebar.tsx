@@ -9,7 +9,6 @@ import React, {
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
-// AJOUT : Import de updateDirectory
 import {
     getAllDirectories,
     type DirectoryDTO,
@@ -20,10 +19,18 @@ import {
 import type { TreeNode, FlatItem } from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
-import { CreateFolderModal, RenameModal, DeleteModal } from "./SideBarPart/SidebarModals";
+// Imports des Modales
+import { CreateFolderModal, RenameModal, DeleteModal, ExportModal } from "./SideBarPart/SidebarModals";
 
+// Imports pour l'exportation
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import { jsPDF } from 'jspdf';
+
+// Interface exposée au composant parent (HomePage)
 export interface SidebarHandle {
     openCreateModal: () => void;
+    openExportModal: () => void;
 }
 
 // --- HELPERS ---
@@ -58,20 +65,15 @@ const buildTree = (directories: DirectoryDTO[]): TreeNode[] => {
     return roots;
 };
 
-const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNode[] => {
-    return nodes.map(node => {
-        if (node.id === id) return { ...node, name: newName };
-        if (node.children) return { ...node, children: updateNodeName(node.children, id, newName) };
-        return node;
-    });
-};
+// [Suppression de updateNodeName ici car inutilisé]
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 // --- COMPOSANT ---
-const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
+// On remplace 'props' par '_' pour dire à TypeScript qu'on ne s'en sert pas
+const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
     // --- STATE DONNEES ---
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -93,6 +95,10 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
 
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [actionItemId, setActionItemId] = useState<string | null>(null);
+
+    // --- STATE EXPORT ---
+    const [isExportOpen, setIsExportOpen] = useState(false);
+    const [exportTargetId, setExportTargetId] = useState<string | null>(null);
 
     // --- CONTEXT MENU ---
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; targetId: string | null }>({ x: 0, y: 0, targetId: null });
@@ -249,21 +255,15 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    // --- MODIFICATION ICI : Appel au nouveau service updateDirectory ---
     const submitRename = async (e: React.FormEvent) => {
         e.preventDefault();
         if (actionItemId && renameValue.trim()) {
             try {
-                // Le backend attend { id, name }
                 await updateDirectory({
                     id: parseInt(actionItemId),
                     name: renameValue
                 });
-
-                // On recharge l'arbre pour voir le changement
                 await refreshTree();
-
-                // On ferme la modale
                 setIsRenameOpen(false);
                 setActionItemId(null);
             } catch (error) {
@@ -293,10 +293,59 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
         }
     };
 
+    // --- HANDLERS EXPORTATION ---
+    const openExportUI = (id: string | null) => {
+        setExportTargetId(id);
+        setIsExportOpen(true);
+        setContextMenu(p => ({ ...p, targetId: null }));
+    };
+
+    const handleExportConfirm = async (format: 'zip' | 'pdf') => {
+        setIsExportOpen(false); // Fermer la modale
+        const targetName = exportTargetId
+            ? allNodes.find(n => n.id === exportTargetId)?.name || "Dossier"
+            : "Grimoire_Complet";
+
+        console.log(`🔮 Lancement du rituel d'exportation en ${format.toUpperCase()} pour l'ID: ${exportTargetId}`);
+
+        try {
+            if (format === 'zip') {
+                const zip = new JSZip();
+                const folder = zip.folder(targetName);
+
+                // --- EXEMPLE DE CONTENU ---
+                // Tu devras ici faire un appel API pour récupérer les vrais fichiers du dossier
+                folder?.file("Lisez-moi.txt", "Ce grimoire contient des secrets...");
+
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, `${targetName}.zip`);
+
+            } else if (format === 'pdf') {
+                const doc = new jsPDF();
+
+                doc.setFont("times", "bold");
+                doc.setFontSize(22);
+                doc.text(targetName, 20, 20);
+
+                doc.setFont("times", "normal");
+                doc.setFontSize(12);
+                doc.text("Contenu extrait du Grimoire...", 20, 40);
+
+                doc.save(`${targetName}.pdf`);
+            }
+        } catch (error) {
+            console.error("Échec du sortilège d'exportation", error);
+            alert("Le rituel a échoué...");
+        }
+    };
+
     // --- EXPOSITION AU PARENT ---
     useImperativeHandle(ref, () => ({
         openCreateModal: () => {
             openCreateModal(null);
+        },
+        openExportModal: () => {
+            openExportUI(null);
         }
     }));
 
@@ -336,21 +385,7 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                     className="collapse-btn"
                     onClick={toggleCollapse}
                     title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}
-                    style={{
-                        position: 'absolute',
-                        right: isCollapsed ? -40 : 10,
-                        top: 10,
-                        zIndex: 100,
-                        width: '30px',
-                        height: '30px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: '#2d2d2d',
-                        border: '1px solid #444',
-                        borderRadius: '50%',
-                        cursor: 'pointer'
-                    }}
+                    // Les styles sont gérés dans sidebar.css
                 >
                     <span className={`chevron ${isCollapsed ? "right" : "left"}`} />
                 </motion.button>
@@ -391,6 +426,7 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                 )}
             </aside>
 
+            {/* Menu Contextuel */}
             <ContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
@@ -398,10 +434,12 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                 onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
                 onRename={openRename}
                 onDelete={openDelete}
+                onExport={openExportUI}
                 // @ts-expect-error
                 onNewFolder={openCreateModal}
             />
 
+            {/* Modales */}
             <CreateFolderModal
                 isOpen={isCreateOpen}
                 onClose={() => setIsCreateOpen(false)}
@@ -425,6 +463,13 @@ const Sidebar = forwardRef<SidebarHandle, object>((props, ref) => {
                 isOpen={isDeleteOpen}
                 onClose={() => setIsDeleteOpen(false)}
                 onConfirm={submitDelete}
+            />
+
+            <ExportModal
+                isOpen={isExportOpen}
+                onClose={() => setIsExportOpen(false)}
+                onConfirm={handleExportConfirm}
+                folderName={exportTargetId ? allNodes.find(n => n.id === exportTargetId)?.name : undefined}
             />
         </>
     );
