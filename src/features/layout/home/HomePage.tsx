@@ -1,9 +1,15 @@
 import React from "react";
 import { motion } from "framer-motion";
 import "./HomePage.css";
+
+// Attention aux chemins : vérifie s'il faut "../" ou "../../" selon ton dossier réel
 import Sidebar from "../../components/SideBar/sidebar.tsx";
 import { Bats } from "../../components/Bats/Bats.tsx";
 import { Ghost } from "../../components/Ghost/Ghost.tsx";
+
+// 1. NOUVEAUX IMPORTS NÉCESSAIRES
+import { useAuth } from "../../context/AuthContext"; // Vérifie le chemin (../ ou ../../)
+import { useNavigate } from "react-router";
 
 interface HomePageProps {
     user: string;
@@ -12,7 +18,7 @@ interface HomePageProps {
 }
 
 // --- CONSTANTES D'ANIMATION UNIFORMES ---
-const ANIM_DURATION = 0.6; // Vitesse unifiée (0.6s)
+const ANIM_DURATION = 0.6;
 const ANIM_EASE = "easeOut";
 
 const spookyShake = {
@@ -26,6 +32,21 @@ const recentNotes = [
 ];
 
 const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent }) => {
+
+    // 2. RECUPERATION DU CONTEXTE ET NAVIGATION
+    const { logout } = useAuth();
+    const navigate = useNavigate();
+
+    // Fonction de déconnexion
+    const handleLogout = async () => {
+        try {
+            await logout(); // Vide le cookie et le state user
+            navigate("/login"); // Redirige vers la page de login
+        } catch (error) {
+            console.error("Erreur lors de la fuite:", error);
+        }
+    };
+
     return (
         <div className="home-root">
             <Ghost />
@@ -48,7 +69,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                 className="main-area"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                // Uniformisation ici
                 transition={{ duration: ANIM_DURATION, ease: ANIM_EASE }}
             >
                 {/* Titre et Sous-titre */}
@@ -56,7 +76,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                     className="hero-center"
                     initial={{ y: -50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    // Uniformisation ici
                     transition={{ duration: ANIM_DURATION, ease: ANIM_EASE }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -77,7 +96,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                         variants={spookyShake}
                         whileHover="hover"
                         whileTap={{ scale: 0.95 }}
-                        // On ajoute une petite apparition fluide
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: ANIM_DURATION, delay: 0.2 }}
@@ -97,6 +115,25 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                     >
                         💀 Ouvrir la Crypte
                     </motion.button>
+
+                    {/* 3. LE NOUVEAU BOUTON DE DECONNEXION */}
+                    <motion.button
+                        className="halloween-btn"
+                        onClick={handleLogout}
+                        variants={spookyShake}
+                        whileHover="hover"
+                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: ANIM_DURATION, delay: 0.4 }} // Délai un peu plus long pour l'effet cascade
+                        style={{
+                            borderColor: '#ff4444',
+                            boxShadow: '0 0 8px rgba(255, 68, 68, 0.4)',
+                            marginLeft: '10px'
+                        }}
+                    >
+                        🚪 S'enfuir (Logout)
+                    </motion.button>
                 </div>
 
                 {/* Dashboard (Cartes) */}
@@ -109,7 +146,6 @@ const HomePage: React.FC<HomePageProps> = ({ user, onCreateFolder, onOpenRecent 
                                 className="spooky-card"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                // Uniformisation de la durée, le délai reste progressif
                                 transition={{
                                     duration: ANIM_DURATION,
                                     ease: ANIM_EASE,

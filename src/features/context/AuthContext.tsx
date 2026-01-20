@@ -1,11 +1,12 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type {UserResponse, LoginRequest} from "../../shared/DTO/users/users";
-import { login as loginService, getCurrentUser } from "../services/auth/authservice";
+import {login as loginService, getCurrentUser, logout as logoutService} from "../services/auth/authservice";
 
 interface AuthContextType {
     user: UserResponse | null;
     login: (data: LoginRequest) => Promise<void>;
+    logout: () => Promise<void>;
     isAuthenticated: boolean;
     isLoading: boolean;
 }
@@ -22,8 +23,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
                 const userData = await getCurrentUser();
                 setUser(userData);
-            } catch (error) {
+            } catch (e) {
                 // Pas connecté, ce n'est pas grave
+                console.error(e);
                 setUser(null);
             } finally {
                 setIsLoading(false);
@@ -40,13 +42,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(userData);
     };
 
+    const logout = async () => {
+        try {
+            await logoutService();
+        }catch (e) {
+            console.error(e);
+        }finally {
+            setUser(null);
+        }
+    }
+
     return (
-        <AuthContext.Provider value={{ user, login, isAuthenticated: !!user, isLoading }}>
+        <AuthContext.Provider value={{ user, login,logout, isAuthenticated: !!user, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) throw new Error("useAuth must be used within an AuthProvider");
