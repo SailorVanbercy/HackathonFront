@@ -41,3 +41,13 @@ export const createDirectory = async (req : CreateDirectoryRequest) : Promise<Di
 
     return response.json();
 };
+
+export const deleteDirectory = async (id : number) : Promise<void> => {
+    await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+}

@@ -2,11 +2,17 @@ import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeH
 import { motion } from "framer-motion";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
-import { getAllDirectories, type DirectoryDTO, createDirectory } from "../../services/directories/directoryService";
+import {
+    getAllDirectories,
+    type DirectoryDTO,
+    createDirectory,
+    deleteDirectory
+} from "../../services/directories/directoryService";
 import type {TreeNode, FlatItem} from "./SideBarPart/sidebarTypes";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal } from "./SideBarPart/SidebarModals";
+
 
 // --- TYPES EXPORTÉS ---
 // C'est ce type que la HomePage va utiliser pour typer la "ref"
@@ -55,19 +61,14 @@ const updateNodeName = (nodes: TreeNode[], id: string, newName: string): TreeNod
     });
 };
 
-const removeNode = (nodes: TreeNode[], id: string): TreeNode[] => {
-    return nodes.filter(node => node.id !== id).map(node => {
-        if (node.children) return { ...node, children: removeNode(node.children, id) };
-        return node;
-    });
-};
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
 
 // --- COMPOSANT WRAPPÉ DANS FORWARDREF ---
-const Sidebar = forwardRef<SidebarHandle, object>((_props, ref) => {
+// @ts-expect-error
+const Sidebar = forwardRef<SidebarHandle>((props: object, ref) => {
     // --- STATE DONNEES ---
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -101,7 +102,6 @@ const Sidebar = forwardRef<SidebarHandle, object>((_props, ref) => {
     useImperativeHandle(ref, () => ({
         openCreateModal: () => {
             // On appelle la fonction interne d'ouverture (à la racine par défaut)
-            // eslint-disable-next-line react-hooks/immutability
             openCreateModal(null);
         }
     }));
@@ -269,13 +269,21 @@ const Sidebar = forwardRef<SidebarHandle, object>((_props, ref) => {
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    const submitDelete = () => {
-        if (actionItemId) {
-            setTreeData(prev => removeNode(prev, actionItemId));
-            // TODO: Appel API
+    const submitDelete = async () => {
+        try {
+            let id;
+            if (actionItemId != null) {
+                id = parseInt(actionItemId)
+            }
+            // @ts-expect-error
+            await deleteDirectory(id);
+        }catch (e) {
+            console.error(e);
+        }finally {
             setIsDeleteOpen(false);
-            setActionItemId(null);
+            refreshTree();
         }
+
     };
 
     // --- GESTION RESIZE ---
