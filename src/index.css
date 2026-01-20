@@ -24,3 +24,11 @@ html, body {
     box-sizing: border-box;
 }
 
+a,
+button,
+input,
+select,
+textarea,
+[role="button"] {
+    cursor: none !important;
+}
