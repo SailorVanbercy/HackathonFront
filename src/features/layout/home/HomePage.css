@@ -1,3 +1,5 @@
+/* src/features/layout/home/HomePage.css */
+
 /* ------- Layout global ------- */
 .home-root {
     height: 100vh;
@@ -11,29 +13,25 @@
 
 /* --- Zone principale --- */
 .main-area {
-    flex: 1; /* Prend l'espace restant à côté de la sidebar */
+    flex: 1;
     min-width: 0;
     padding: 28px;
-    overflow: auto; /* Permet le scroll */
-    position: relative; /* Référent pour le positionnement absolu interne */
+    overflow-y: auto; /* Scroll vertical */
+    position: relative;
     z-index: 1;
-
     /* Transition fluide pour suivre l'ouverture de la sidebar */
     transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* ---- TITRE DYNAMIQUE ---- */
 .hero-center {
-    /* On l'attache au flux normal ou en absolute par rapport à main-area */
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%; /* Prend toute la largeur de main-area */
-
+    width: 100%;
     padding-top: max(20px, env(safe-area-inset-top));
-
     display: flex;
-    justify-content: center; /* Centre le texte dans main-area */
+    justify-content: center;
     text-align: center;
     pointer-events: none;
     z-index: 2;
@@ -79,11 +77,10 @@
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    /* Marge importante pour ne pas être caché par le titre absolute */
     margin: 140px auto 24px;
     max-width: 1100px;
     position: relative;
-    z-index: 5; /* Au-dessus du titre pour être cliquable */
+    z-index: 5;
 }
 
 @media (max-width: 700px) {
