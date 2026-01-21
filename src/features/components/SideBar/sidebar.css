@@ -226,47 +226,175 @@
 /* ========================================= */
 /* MODALES (Inchangé)                        */
 /* ========================================= */
-.modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(10, 0, 10, 0.85); backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 10000; animation: fadeIn 0.3s ease-out;
-}
-.modal-content {
-    background: #1a001a; border: 2px solid #ff6600; border-radius: 12px;
-    padding: 24px; width: 380px;
-    box-shadow: 0 0 25px rgba(255, 102, 0, 0.2), inset 0 0 20px rgba(0,0,0,0.8);
-    color: #ffcc99; display: flex; flex-direction: column; gap: 16px;
-    animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.modal-title {
-    margin: 0; font-size: 1.4rem; color: #ff8c00; text-align: center;
-    font-family: 'Cinzel', serif; text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
-}
-.modal-field { display: flex; flex-direction: column; gap: 8px; }
-.modal-field label { font-size: 0.9rem; color: #bfaFbF; font-weight: 500; }
-.modal-input, .modal-select {
-    padding: 10px; border-radius: 6px; border: 1px solid #5c0a61;
-    background: #0d0d0d; color: #e0e0e0; outline: none; font-size: 0.95rem;
-    transition: border 0.2s, box-shadow 0.2s;
-}
-.modal-input:focus, .modal-select:focus {
-    border-color: #ff8c00; box-shadow: 0 0 8px rgba(255, 140, 0, 0.4);
-}
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px; }
-.btn-cancel {
-    background: transparent; border: 1px solid #5c0a61; color: #bfaFbF;
-    padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
-    font-family: inherit;
-}
-.btn-cancel:hover { background: rgba(255, 255, 255, 0.05); color: #fff; border-color: #bfaFbF; }
-.btn-confirm {
-    background: linear-gradient(45deg, #ff6600, #ff8c00); border: none;
-    color: #1a001a; font-weight: bold; padding: 8px 16px; border-radius: 6px;
-    cursor: pointer; transition: all 0.2s; font-family: inherit;
-    box-shadow: 0 0 10px rgba(255, 102, 0, 0.4);
-}
-.btn-confirm:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 102, 0, 0.7); }
+/* --- MODALES MAGIQUES (New Design) --- */
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* Le fond obscurci et flou */
+.modal-overlay {
+    background: rgba(10, 5, 15, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+}
+
+/* La boîte de la modale */
+.modal-content {
+    background: linear-gradient(145deg, #1e1b2e 0%, #151020 100%);
+    border: 1px solid #4c3a6e;
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 450px;
+    color: #e2e8f0;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(to right, #c084fc, #e879f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+/* Labels */
+.modal-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+/* Inputs & Selects "Magiques" */
+.magic-input, .magic-select {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #4b5563;
+    border-radius: 8px;
+    color: #f3f4f6;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.magic-input:focus, .magic-select:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.magic-select {
+    cursor: pointer;
+    appearance: none; /* Cache la flèche par défaut moche */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a855f7' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+/* Boutons d'action */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: #94a3b8;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.btn-ghost:hover {
+    color: #f1f5f9;
+}
+
+.btn-magic {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.3);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-magic:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px -1px rgba(124, 58, 237, 0.5);
+}
+
+.btn-magic:disabled {
+    background: #334155;
+    color: #64748b;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* --- CARTES D'EXPORT (Nouveau style) --- */
+.export-options {
+    display: grid;
+    gap: 1rem;
+}
+
+.export-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #334155;
+    padding: 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.export-card:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
+    transform: scale(1.02);
+}
+
+.export-icon {
+    font-size: 1.8rem;
+    background: rgba(0,0,0,0.3);
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.export-info h4 {
+    margin: 0 0 0.25rem 0;
+    color: #e2e8f0;
+    font-size: 1rem;
+}
+
+.export-info p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 0.8rem;
+}

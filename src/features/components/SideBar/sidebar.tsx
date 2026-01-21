@@ -1,20 +1,10 @@
-import React, {
-    useEffect,
-    useImperativeHandle,
-    useRef,
-    useState,
-    forwardRef
-} from "react";
+import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { motion } from "framer-motion";
 import "./sidebar.css";
-
-// --- COMPOSANTS UI ---
 import { ContextMenu } from "../ContextMenu/ContextMenu";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, RenameModal, DeleteModal, ExportModal } from "./SideBarPart/SidebarModals";
-
-// --- HOOKS ---
 import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
@@ -46,10 +36,8 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; targetId: string | null }>({ x: 0, y: 0, targetId: null });
-
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
-
     const toggleCollapse = () => setIsCollapsed(s => !s);
 
     const handleContextMenu = (e: React.MouseEvent, id: string, type: 'directory' | 'note') => {
@@ -72,23 +60,34 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     const handleOpenExport = (id: string | null) => {
         const node = id ? tree.allNodes.find((n: { id: string; }) => n.id === id) : null;
-        modals.openExportModal(id, node?.name);
+        const type = node ? node.type : 'directory';
+        modals.openExportModal(id, node?.name, type);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
     const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
-        // IMPORTANT : Conversion string -> number si l'ID vient du tree ou du context menu
-        const numParentId = parentId ? Number(parentId) : null;
+        // CORRECTION 1 : Nettoyage de l'ID (ex: "dir-12" -> 12) avant conversion
+        let numParentId: number | null = null;
+        if (parentId) {
+            const cleanId = String(parentId).replace("dir-", "").replace("note-", "");
+            numParentId = Number(cleanId);
+            if (isNaN(numParentId)) numParentId = null;
+        }
         modals.openCreateModal(type, numParentId);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    // Wrapper essentiel pour notifier la HomePage qu'une note a été créée
     const handleCreateSubmitWrapper = async (name: string, parentId: number | null, type: CreationType) => {
         await actions.handleCreateSubmit(name, parentId, type);
         if (props.onRefresh) {
             props.onRefresh();
         }
+    };
+
+    // CORRECTION 2 : Wrapper pour l'événement onSubmit du formulaire
+    const onModalSubmit = (e: React.FormEvent) => {
+        e.preventDefault(); // Empêche le rechargement
+        handleCreateSubmitWrapper(modals.newFolderName, modals.targetParentId, modals.creationType);
     };
 
     useImperativeHandle(ref, () => ({
@@ -117,92 +116,36 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     return (
         <>
-            <aside
-                ref={sidebarRef}
-                className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
-                style={{
-                    width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth,
-                    position: 'relative'
-                }}
-            >
-                <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="collapse-btn"
-                    onClick={toggleCollapse}
-                    title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}
-                >
+            <aside ref={sidebarRef} className={`sidebar ${isCollapsed ? "collapsed" : ""}`} style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth, position: 'relative' }}>
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="collapse-btn" onClick={toggleCollapse} title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}>
                     <span className={`chevron ${isCollapsed ? "right" : "left"}`} />
                 </motion.button>
 
                 {!isCollapsed && (
                     <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
-                        <SidebarHeader
-                            search={tree.search}
-                            setSearch={tree.setSearch}
-                            isCollapsed={isCollapsed}
-                            onOpenCreate={() => handleOpenCreate(null, 'directory')}
-                        />
-
+                        <SidebarHeader search={tree.search} setSearch={tree.setSearch} isCollapsed={isCollapsed} onOpenCreate={() => handleOpenCreate(null, 'directory')} />
                         <div style={{ padding: '0 10px 10px 10px' }}>
-                            {/* Bouton pour créer une note rapidement */}
-                            <button
-                                onClick={() => handleOpenCreate(null, 'note')}
-                                style={{
-                                    width: '100%', padding: '6px', background: '#2a0a2e',
-                                    border: '1px dashed #bfaFbF', color: '#bfaFbF', borderRadius: '6px',
-                                    cursor: 'pointer', fontSize: '0.8rem'
-                                }}
-                            >
+                            <button onClick={() => handleOpenCreate(null, 'note')} style={{ width: '100%', padding: '6px', background: '#2a0a2e', border: '1px dashed #bfaFbF', color: '#bfaFbF', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>
                                 + Nouvelle Page
                             </button>
                         </div>
-
-                        <SidebarTree
-                            isLoading={tree.isLoading}
-                            visibleItems={tree.visibleItems}
-                            expanded={tree.expanded}
-                            matchSet={tree.matchSet}
-                            activeId={tree.activeId}
-                            isCollapsed={isCollapsed}
-                            onToggleExpand={tree.toggleExpand}
-                            onSelect={tree.setActiveId}
-                            onContextMenu={handleContextMenu}
-                        />
+                        <SidebarTree isLoading={tree.isLoading} visibleItems={tree.visibleItems} expanded={tree.expanded} matchSet={tree.matchSet} activeId={tree.activeId} isCollapsed={isCollapsed} onToggleExpand={tree.toggleExpand} onSelect={tree.setActiveId} onContextMenu={handleContextMenu} />
                     </div>
                 )}
-
                 {!isCollapsed && (
-                    <div
-                        className="resize-handle"
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            resizingRef.current = true;
-                            document.body.style.cursor = "col-resize";
-                            document.body.style.userSelect = "none";
-                        }}
-                    />
+                    <div className="resize-handle" onMouseDown={(e) => { e.preventDefault(); resizingRef.current = true; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }} />
                 )}
             </aside>
 
-            {/* Menu Contextuel */}
-            <ContextMenu
-                x={contextMenu.x}
-                y={contextMenu.y}
-                targetId={contextMenu.targetId}
-                onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
-                onRename={handleOpenRename}
-                onDelete={handleOpenDelete}
-                onExport={handleOpenExport}
-                // @ts-expect-error - onNewFolder passe un string, handleOpenCreate gère la conversion
-                onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')}
-            />
+            <ContextMenu x={contextMenu.x} y={contextMenu.y} targetId={contextMenu.targetId} onClose={() => setContextMenu(p => ({ ...p, targetId: null }))} onRename={handleOpenRename} onDelete={handleOpenDelete} onExport={handleOpenExport}
+                // @ts-expect-error - conversion gérée
+                         onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')} />
 
-            {/* Modales */}
+            {/* CORRECTION 3 : Passage du bon handler onSubmit et des props types */}
             <CreateFolderModal
                 isOpen={modals.isCreateOpen}
                 onClose={() => modals.setIsCreateOpen(false)}
-                onSubmit={handleCreateSubmitWrapper}
+                onSubmit={onModalSubmit} // <--- Utilisation du wrapper
                 folderName={modals.newFolderName}
                 setFolderName={modals.setNewFolderName}
                 parentId={modals.targetParentId}
@@ -210,23 +153,17 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 treeData={tree.treeData}
                 creationType={modals.creationType}
             />
-            <RenameModal
-                isOpen={modals.isRenameOpen}
-                onClose={() => modals.setIsRenameOpen(false)}
-                onSubmit={actions.handleRenameSubmit}
-                value={modals.renameValue}
-                setValue={modals.setRenameValue}
-            />
-            <DeleteModal
-                isOpen={modals.isDeleteOpen}
-                onClose={() => modals.setIsDeleteOpen(false)}
-                onConfirm={actions.handleDeleteConfirm}
-            />
+
+            <RenameModal isOpen={modals.isRenameOpen} onClose={() => modals.setIsRenameOpen(false)} onSubmit={actions.handleRenameSubmit} value={modals.renameValue} setValue={modals.setRenameValue} />
+            <DeleteModal isOpen={modals.isDeleteOpen} onClose={() => modals.setIsDeleteOpen(false)} onConfirm={actions.handleDeleteConfirm} />
+
             <ExportModal
                 isOpen={modals.isExportOpen}
                 onClose={() => modals.setIsExportOpen(false)}
                 onConfirm={actions.handleExportConfirm}
                 folderName={modals.exportTargetName}
+                // @ts-expect-error - Type mismatch temporaire
+                itemType={modals.exportItemType || 'directory'}
             />
         </>
     );

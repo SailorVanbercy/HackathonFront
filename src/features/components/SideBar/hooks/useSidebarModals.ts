@@ -2,8 +2,8 @@ import { useState } from "react";
 
 export type CreationType = 'directory' | 'note';
 
-// Interface exposée pour useSidebarActions
 export interface UseSidebarModalsType {
+    // ... (Create, Rename, Delete inchangés) ...
     isCreateOpen: boolean;
     setIsCreateOpen: (v: boolean) => void;
     newFolderName: string;
@@ -25,16 +25,19 @@ export interface UseSidebarModalsType {
     targetDeleteId: string | null;
     openDeleteModal: (id: string) => void;
 
+    // --- EXPORT ---
     isExportOpen: boolean;
     setIsExportOpen: (v: boolean) => void;
     targetExportId: string | null;
     exportTargetName: string | undefined;
-    openExportModal: (id: string | null, name?: string) => void;
+    // NOUVEAU : On stocke le type de l'élément à exporter
+    exportItemType: 'directory' | 'note' | null;
+    openExportModal: (id: string | null, name?: string, type?: 'directory' | 'note') => void;
 }
 
 export const useSidebarModals = (): UseSidebarModalsType => {
 
-    // --- CREATE ---
+    // ... (Create, Rename, Delete states inchangés) ...
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
     const [targetParentId, setTargetParentId] = useState<number | null>(null);
@@ -47,7 +50,6 @@ export const useSidebarModals = (): UseSidebarModalsType => {
         setIsCreateOpen(true);
     };
 
-    // --- RENAME ---
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState("");
     const [targetRenameId, setTargetRenameId] = useState<string | null>(null);
@@ -58,7 +60,6 @@ export const useSidebarModals = (): UseSidebarModalsType => {
         setIsRenameOpen(true);
     };
 
-    // --- DELETE ---
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
 
@@ -71,36 +72,27 @@ export const useSidebarModals = (): UseSidebarModalsType => {
     const [isExportOpen, setIsExportOpen] = useState(false);
     const [targetExportId, setTargetExportId] = useState<string | null>(null);
     const [exportTargetName, setExportTargetName] = useState<string | undefined>(undefined);
+    const [exportItemType, setExportItemType] = useState<'directory' | 'note' | null>(null);
 
-    const openExportModal = (id: string | null, name?: string) => {
+    const openExportModal = (id: string | null, name?: string, type: 'directory' | 'note' = 'directory') => {
         setTargetExportId(id);
         setExportTargetName(name);
+        // Si id est null, c'est la racine, donc forcément un directory
+        setExportItemType(id === null ? 'directory' : type);
         setIsExportOpen(true);
     };
 
     return {
-        // Create
-        isCreateOpen, setIsCreateOpen,
-        newFolderName, setNewFolderName,
-        targetParentId, setTargetParentId,
-        creationType,
-        openCreateModal,
-
-        // Rename
-        isRenameOpen, setIsRenameOpen,
-        renameValue, setRenameValue,
-        targetRenameId,
-        openRenameModal,
-
-        // Delete
-        isDeleteOpen, setIsDeleteOpen,
-        targetDeleteId,
-        openDeleteModal,
+        // ... (Exports existants) ...
+        isCreateOpen, setIsCreateOpen, newFolderName, setNewFolderName, targetParentId, setTargetParentId, creationType, openCreateModal,
+        isRenameOpen, setIsRenameOpen, renameValue, setRenameValue, targetRenameId, openRenameModal,
+        isDeleteOpen, setIsDeleteOpen, targetDeleteId, openDeleteModal,
 
         // Export
         isExportOpen, setIsExportOpen,
         targetExportId,
         exportTargetName,
+        exportItemType, // On expose le type
         openExportModal
     };
 };
