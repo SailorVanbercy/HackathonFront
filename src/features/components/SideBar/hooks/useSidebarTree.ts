@@ -1,84 +1,32 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getAllDirectories, type DirectoryDTO } from "../../../services/directories/directoryService";
 import { getAllNotes, type NoteTreeItemDTO } from "../../../services/notes/noteService";
-import type {TreeNode, FlatItem} from "../SideBarPart/sidebarTypes";
+import type { FlatItem } from "../SideBarPart/sidebarTypes";
 
-// --- BUILDER UNIFIÉ (Logique pure, hors du composant) ---
-const buildTree = (directories: DirectoryDTO[], notes: NoteTreeItemDTO[]): TreeNode[] => {
-    const map = new Map<string, TreeNode>();
-    const roots: TreeNode[] = [];
+// Nom technique du dossier racine
+const HIDDEN_ROOT_NAME = "root";
 
-    // 1. Création des noeuds "Dossiers"
-    directories.forEach(dir => {
-        const uniqueId = `dir-${dir.id}`;
-        map.set(String(dir.id), {
-            id: uniqueId,
-            name: dir.name,
-            type: 'directory',
-            children: []
-        });
-    });
+export const useSidebarTree = (searchQuery: string = "") => {
+    // Données brutes (pour les modales)
+    const [directories, setDirectories] = useState<DirectoryDTO[]>([]);
+    const [notes, setNotes] = useState<NoteTreeItemDTO[]>([]);
 
-    // 2. Placement des "Notes"
-    notes.forEach(note => {
-        const uniqueId = `note-${note.id}`;
-        const noteNode: TreeNode = {
-            id: uniqueId,
-            name: note.name,
-            type: 'note',
-            children: []
-        };
-
-        if (note.directoryId && map.has(String(note.directoryId))) {
-            map.get(String(note.directoryId))!.children!.push(noteNode);
-        } else {
-            roots.push(noteNode);
-        }
-    });
-
-    // 3. Hiérarchie des dossiers
-    directories.forEach(dir => {
-        const node = map.get(String(dir.id));
-        if (!node) return;
-
-        if (dir.parentDirectoryId !== null && map.has(String(dir.parentDirectoryId))) {
-            map.get(String(dir.parentDirectoryId))!.children!.push(node);
-        } else {
-            roots.push(node);
-        }
-    });
-
-    return roots;
-};
-
-// Helper récursif
-const getDescendantIds = (node: TreeNode, ids: string[] = []) => {
-    if (node.children) {
-        node.children.forEach((child) => {
-            ids.push(child.id);
-            getDescendantIds(child, ids);
-        });
-    }
-    return ids;
-};
-
-export const useSidebarTree = () => {
-    const [treeData, setTreeData] = useState<TreeNode[]>([]);
+    // États d'affichage
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [search, setSearch] = useState<string>("");
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const [activeId, setActiveId] = useState<string>("");
 
-    // --- 1. CHARGEMENT DES DONNÉES ---
+    // 1. Chargement des données
     const refreshTree = useCallback(async () => {
         try {
-            const [dirs, notes] = await Promise.all([
+            const [dirs, fetchedNotes] = await Promise.all([
                 getAllDirectories(),
                 getAllNotes()
             ]);
-            setTreeData(buildTree(dirs, notes));
+            setDirectories(dirs);
+            setNotes(fetchedNotes);
         } catch (e) {
-            console.error("Erreur chargement grimoire complet", e);
+            console.error("Erreur chargement grimoire", e);
         }
     }, []);
 
@@ -87,116 +35,119 @@ export const useSidebarTree = () => {
         refreshTree().finally(() => setIsLoading(false));
     }, [refreshTree]);
 
-    // --- 2. CALCUL DES PARENTS (Doit être AVANT la recherche) ---
-    const { parentById, allNodes } = useMemo(() => {
-        const parentMap = new Map<string, string | null>();
-        const nodesList: TreeNode[] = [];
-        const stack: Array<{ node: TreeNode; parent: string | null }> = [];
+    // 2. Gestion de l'expansion
+    const toggleExpand = useCallback((id: string) => {
+        setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+    }, []);
 
-        for (let i = treeData.length - 1; i >= 0; i--) {
-            stack.push({ node: treeData[i], parent: null });
-        }
+    // 3. Construction de l'arbre visuel (FlatList)
+    const { visibleItems, matchSet, allNodes } = useMemo(() => {
+        const flatList: FlatItem[] = [];
+        const matches = new Set<string>();
+        const nodesMap = new Map<string, { name: string; type: 'directory' | 'note' }>();
 
-        let loopSafety = 0;
-        while (stack.length) {
-            loopSafety++; if(loopSafety > 20000) break;
+        const isSearching = searchQuery.trim().length > 0;
+        const lowerQuery = searchQuery.toLowerCase();
 
-            const popped = stack.pop();
-            if (popped) {
-                const { node, parent: p } = popped;
-                parentMap.set(node.id, p);
-                nodesList.push(node);
-                if (node.children) {
-                    for (let i = node.children.length - 1; i >= 0; i--) {
-                        stack.push({ node: node.children[i], parent: node.id });
-                    }
+        // Identification du root
+        const rootDir = directories.find((d) => d.name === HIDDEN_ROOT_NAME);
+        const rootDirId = rootDir?.id;
+
+        // Fonction récursive de traversée
+        // parentId : ID technique (number) du parent. 0 ou null pour la racine.
+        const traverse = (parentId: number, currentDepth: number) => {
+
+            // Filtrer les enfants directs
+            const currentDirs = directories.filter((d) => {
+                if (parentId === 0) return !d.parentDirectoryId || d.parentDirectoryId === 0;
+                return d.parentDirectoryId === parentId;
+            });
+
+            const currentNotes = notes.filter((n) => {
+                if (parentId === 0) return !n.directoryId || n.directoryId === 0;
+                return n.directoryId === parentId;
+            });
+
+            // --- TRAITEMENT DES DOSSIERS ---
+            for (const dir of currentDirs) {
+                const strId = `dir-${dir.id}`;
+                nodesMap.set(strId, { name: dir.name, type: 'directory' });
+
+                // LOGIQUE ROOT CACHÉ
+                if (dir.id === rootDirId) {
+                    // On traverse les enfants sans ajouter ce dossier à la liste
+                    // Et on ne change pas la profondeur (currentDepth reste 0)
+                    traverse(dir.id, currentDepth);
+                    continue;
+                }
+
+                const isMatch = isSearching && dir.name.toLowerCase().includes(lowerQuery);
+                if (isMatch) matches.add(strId);
+
+                const hasChildren =
+                    directories.some((d) => d.parentDirectoryId === dir.id) ||
+                    notes.some((n) => n.directoryId === dir.id);
+
+                const isOpen = expanded[strId] || isSearching;
+
+                // On ajoute le dossier à la liste visible
+                flatList.push({
+                    id: strId,
+                    name: dir.name,
+                    type: "directory",
+                    depth: currentDepth,
+                    hasChildren,
+                });
+
+                if (isOpen) {
+                    traverse(dir.id, currentDepth + 1);
                 }
             }
-        }
-        return { parentById: parentMap, allNodes: nodesList };
-    }, [treeData]);
 
-    // --- 3. LOGIQUE DE RECHERCHE (Utilise parentById calculé juste au-dessus) ---
-    const matchSet = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return null;
+            // --- TRAITEMENT DES NOTES ---
+            for (const note of currentNotes) {
+                const strId = `note-${note.id}`;
+                nodesMap.set(strId, { name: note.name, type: 'note' });
 
-        const set = new Set<string>();
-        // Ici, on utilise 'allNodes' et 'parentById' qui sont garantis d'exister
-        for (const node of allNodes) {
-            if (node.name.toLowerCase().includes(q)) {
-                set.add(node.id);
-                let cur = node.id;
-                let depth = 0;
-                while (depth < 50) {
-                    const p = parentById.get(cur); // C'est cette ligne qui plantait
-                    if (!p) break;
-                    set.add(p);
-                    cur = p;
-                    depth++;
-                }
-            }
-        }
-        return set;
-    }, [search, allNodes, parentById]);
+                const isMatch = isSearching && note.name.toLowerCase().includes(lowerQuery);
+                if (isMatch) matches.add(strId);
 
-    // --- 4. LISTE VISIBLE APLATIE (Pour le rendu) ---
-    const visibleItems: FlatItem[] = useMemo(() => {
-        const list: FlatItem[] = [];
-        const stack: Array<{ node: TreeNode; depth: number }> = [];
-        for (let i = treeData.length - 1; i >= 0; i--) {
-            stack.push({ node: treeData[i], depth: 0 });
-        }
-
-        while (stack.length) {
-            const popped = stack.pop();
-            if (popped) {
-                const { node, depth } = popped;
-                // Filtrage
-                if (!matchSet || matchSet.has(node.id)) {
-                    list.push({
-                        id: node.id,
-                        name: node.name,
-                        type: node.type,
-                        depth,
-                        hasChildren: !!node.children?.length
+                if (!isSearching || isMatch) {
+                    flatList.push({
+                        id: strId,
+                        name: note.name,
+                        type: "note",
+                        depth: currentDepth,
+                        hasChildren: false,
                     });
                 }
-
-                // Expansion
-                const isOpen = matchSet ? matchSet.has(node.id) : expanded[node.id];
-                if (!!node.children?.length && isOpen) {
-                    for (let i = node.children.length - 1; i >= 0; i--) {
-                        stack.push({ node: node.children[i], depth: depth + 1 });
-                    }
-                }
             }
-        }
-        return list;
-    }, [expanded, matchSet, treeData]);
+        };
 
-    // --- ACTIONS ---
-    const toggleExpand = (id: string) => {
-        setExpanded(prev => {
-            const isClosing = prev[id];
-            const newState = { ...prev, [id]: !prev[id] };
-            if (isClosing) {
-                const node = allNodes.find(n => n.id === id);
-                if (node) {
-                    getDescendantIds(node).forEach(childId => newState[childId] = false);
-                }
-            }
-            return newState;
-        });
-    };
+        // Démarrage (0 = racine logique des parents)
+        traverse(0, 0);
+
+        // Reconversion de la map en tableau pour allNodes (utile pour l'export/rename)
+        const allNodesList = Array.from(nodesMap.entries()).map(([id, val]) => ({ id, ...val }));
+
+        return {
+            visibleItems: flatList,
+            matchSet: isSearching ? matches : null,
+            allNodes: allNodesList
+        };
+    }, [directories, notes, expanded, searchQuery]);
 
     return {
-        treeData,
+        directories, // Export brut pour les modales
+        visibleItems,
         allNodes,
+        expanded,
+        matchSet,
         isLoading,
-        search, setSearch,
-        expanded, setExpanded, toggleExpand,
-        activeId, setActiveId,
-        visibleItems, matchSet, refreshTree
+        toggleExpand,
+        refreshTree,
+        activeId,
+        setActiveId,
+        setExpanded
     };
 };

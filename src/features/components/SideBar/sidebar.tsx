@@ -4,7 +4,7 @@ import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
-import { CreateFolderModal, RenameModal, DeleteModal, ExportModal } from "./SideBarPart/SidebarModals";
+import { CreateFolderModal, CreateNoteModal, RenameModal, DeleteModal, ExportModal } from "./SideBarPart/SidebarModals";
 import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
@@ -23,30 +23,42 @@ const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
+    // 1. CORRECTION : On gère l'état de la recherche ICI
+    const [search, setSearch] = useState("");
 
-    const tree = useSidebarTree();
+    // 2. CORRECTION : On passe la recherche au hook
+    const tree = useSidebarTree(search);
+
     const modals = useSidebarModals();
-
     const actions = useSidebarActions({
-        refreshTree: tree.refreshTree,
+        refreshTree: async () => { await tree.refreshTree(); if (props.onRefresh) props.onRefresh(); },
         modals,
         setExpanded: tree.setExpanded
     });
 
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
-    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; targetId: string | null }>({ x: 0, y: 0, targetId: null });
+
+    // 3. CORRECTION : On stocke aussi le TYPE de la cible (dossier ou note)
+    const [contextMenu, setContextMenu] = useState<{
+        x: number;
+        y: number;
+        targetId: string | null;
+        targetType: 'directory' | 'note' | null
+    }>({ x: 0, y: 0, targetId: null, targetType: null });
+
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
     const toggleCollapse = () => setIsCollapsed(s => !s);
 
     const handleContextMenu = (e: React.MouseEvent, id: string, type: 'directory' | 'note') => {
         e.preventDefault();
-        setContextMenu({ x: e.clientX, y: e.clientY, targetId: id });
+        // On sauvegarde le type pour savoir quelles options afficher
+        setContextMenu({ x: e.clientX, y: e.clientY, targetId: id, targetType: type });
     };
 
     const handleOpenRename = (id: string) => {
-        const node = tree.allNodes.find((n: { id: string; }) => n.id === id);
+        const node = tree.allNodes.find((n) => n.id === id);
         if (node) {
             modals.openRenameModal(id, node.name);
             setContextMenu(p => ({ ...p, targetId: null }));
@@ -59,35 +71,21 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     };
 
     const handleOpenExport = (id: string | null) => {
-        const node = id ? tree.allNodes.find((n: { id: string; }) => n.id === id) : null;
+        const node = id ? tree.allNodes.find((n) => n.id === id) : null;
         const type = node ? node.type : 'directory';
         modals.openExportModal(id, node?.name, type);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
     const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
-        // CORRECTION 1 : Nettoyage de l'ID (ex: "dir-12" -> 12) avant conversion
         let numParentId: number | null = null;
         if (parentId) {
             const cleanId = String(parentId).replace("dir-", "").replace("note-", "");
-            numParentId = Number(cleanId);
-            if (isNaN(numParentId)) numParentId = null;
+            const parsed = parseInt(cleanId, 10);
+            if (!isNaN(parsed)) numParentId = parsed;
         }
         modals.openCreateModal(type, numParentId);
         setContextMenu(p => ({ ...p, targetId: null }));
-    };
-
-    const handleCreateSubmitWrapper = async (name: string, parentId: number | null, type: CreationType) => {
-        await actions.handleCreateSubmit(name, parentId, type);
-        if (props.onRefresh) {
-            props.onRefresh();
-        }
-    };
-
-    // CORRECTION 2 : Wrapper pour l'événement onSubmit du formulaire
-    const onModalSubmit = (e: React.FormEvent) => {
-        e.preventDefault(); // Empêche le rechargement
-        handleCreateSubmitWrapper(modals.newFolderName, modals.targetParentId, modals.creationType);
     };
 
     useImperativeHandle(ref, () => ({
@@ -116,20 +114,36 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     return (
         <>
-            <aside ref={sidebarRef} className={`sidebar ${isCollapsed ? "collapsed" : ""}`} style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth, position: 'relative' }}>
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="collapse-btn" onClick={toggleCollapse} title={isCollapsed ? "Ouvrir le Grimoire" : "Fermer"}>
+            <aside ref={sidebarRef} className={`sidebar ${isCollapsed ? "collapsed" : ""}`} style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}>
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="collapse-btn" onClick={toggleCollapse} title={isCollapsed ? "Ouvrir" : "Fermer"}>
                     <span className={`chevron ${isCollapsed ? "right" : "left"}`} />
                 </motion.button>
 
                 {!isCollapsed && (
                     <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
-                        <SidebarHeader search={tree.search} setSearch={tree.setSearch} isCollapsed={isCollapsed} onOpenCreate={() => handleOpenCreate(null, 'directory')} />
+                        {/* 4. CORRECTION : On passe search et setSearch locaux */}
+                        <SidebarHeader
+                            search={search}
+                            setSearch={setSearch}
+                            isCollapsed={isCollapsed}
+                            onOpenCreate={() => handleOpenCreate(null, 'directory')}
+                        />
                         <div style={{ padding: '0 10px 10px 10px' }}>
                             <button onClick={() => handleOpenCreate(null, 'note')} style={{ width: '100%', padding: '6px', background: '#2a0a2e', border: '1px dashed #bfaFbF', color: '#bfaFbF', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>
                                 + Nouvelle Page
                             </button>
                         </div>
-                        <SidebarTree isLoading={tree.isLoading} visibleItems={tree.visibleItems} expanded={tree.expanded} matchSet={tree.matchSet} activeId={tree.activeId} isCollapsed={isCollapsed} onToggleExpand={tree.toggleExpand} onSelect={tree.setActiveId} onContextMenu={handleContextMenu} />
+                        <SidebarTree
+                            isLoading={tree.isLoading}
+                            visibleItems={tree.visibleItems}
+                            expanded={tree.expanded}
+                            matchSet={tree.matchSet}
+                            activeId={tree.activeId}
+                            isCollapsed={isCollapsed}
+                            onToggleExpand={tree.toggleExpand}
+                            onSelect={tree.setActiveId}
+                            onContextMenu={handleContextMenu}
+                        />
                     </div>
                 )}
                 {!isCollapsed && (
@@ -137,34 +151,40 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 )}
             </aside>
 
-            <ContextMenu x={contextMenu.x} y={contextMenu.y} targetId={contextMenu.targetId} onClose={() => setContextMenu(p => ({ ...p, targetId: null }))} onRename={handleOpenRename} onDelete={handleOpenDelete} onExport={handleOpenExport}
-                // @ts-expect-error - conversion gérée
-                         onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')} />
-
-            {/* CORRECTION 3 : Passage du bon handler onSubmit et des props types */}
-            <CreateFolderModal
-                isOpen={modals.isCreateOpen}
-                onClose={() => modals.setIsCreateOpen(false)}
-                onSubmit={onModalSubmit} // <--- Utilisation du wrapper
-                folderName={modals.newFolderName}
-                setFolderName={modals.setNewFolderName}
-                parentId={modals.targetParentId}
-                setParentId={modals.setTargetParentId}
-                treeData={tree.treeData}
-                creationType={modals.creationType}
+            {/* 5. CORRECTION : On passe targetType et onNewFolder */}
+            <ContextMenu
+                x={contextMenu.x}
+                y={contextMenu.y}
+                targetId={contextMenu.targetId}
+                targetType={contextMenu.targetType}
+                onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
+                onRename={handleOpenRename}
+                onDelete={handleOpenDelete}
+                onExport={handleOpenExport}
+                onNewFolder={(parentId: string | null) => handleOpenCreate(parentId, 'directory')}
             />
+
+            {modals.isCreateOpen && modals.creationType === 'directory' && (
+                <CreateFolderModal
+                    isOpen={modals.isCreateOpen}
+                    onClose={() => modals.setIsCreateOpen(false)}
+                    onSubmit={actions.handleCreateFolder}
+                    directories={tree.directories}
+                />
+            )}
+
+            {modals.isCreateOpen && modals.creationType === 'note' && (
+                <CreateNoteModal
+                    isOpen={modals.isCreateOpen}
+                    onClose={() => modals.setIsCreateOpen(false)}
+                    onSubmit={actions.handleCreateNote}
+                    directories={tree.directories}
+                />
+            )}
 
             <RenameModal isOpen={modals.isRenameOpen} onClose={() => modals.setIsRenameOpen(false)} onSubmit={actions.handleRenameSubmit} value={modals.renameValue} setValue={modals.setRenameValue} />
             <DeleteModal isOpen={modals.isDeleteOpen} onClose={() => modals.setIsDeleteOpen(false)} onConfirm={actions.handleDeleteConfirm} />
-
-            <ExportModal
-                isOpen={modals.isExportOpen}
-                onClose={() => modals.setIsExportOpen(false)}
-                onConfirm={actions.handleExportConfirm}
-                folderName={modals.exportTargetName}
-                // @ts-expect-error - Type mismatch temporaire
-                itemType={modals.exportItemType || 'directory'}
-            />
+            <ExportModal isOpen={modals.isExportOpen} onClose={() => modals.setIsExportOpen(false)} onConfirm={actions.handleExportConfirm} folderName={modals.exportTargetName} itemType={modals.exportItemType || 'directory'} />
         </>
     );
 });
