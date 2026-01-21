@@ -1,95 +1,143 @@
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar, { type SidebarHandle } from '../../components/SideBar/sidebar';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, useUser } from '../../context/AuthContext';
+import { getAllNotes, type NoteTreeItemDTO } from '../../services/notes/noteService';
+import { Ghost } from "../../components/Ghost/Ghost";
+import { Bats } from "../../components/Bats/Bats";
 import './HomePage.css';
-import {Ghost} from "../../components/Ghost/Ghost.tsx";
-import {Bats} from "../../components/Bats/Bats.tsx";
+
+interface NoteDisplay extends NoteTreeItemDTO {
+    updatedAt?: string;
+    content?: string;
+}
 
 export const HomePage = () => {
-    // 1. Référence vers la Sidebar pour ouvrir la modale
     const sidebarRef = useRef<SidebarHandle>(null);
-
-    // 2. Hook d'authentification pour le logout
+    const user = useUser();
     const { logout } = useAuth();
 
-    // 3. Fonction pour déclencher l'ouverture du menu "Nouveau Dossier" via la Sidebar
+    const [notes, setNotes] = useState<NoteDisplay[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fonction de chargement extraite pour pouvoir être appelée depuis le useEffect ET la Sidebar
+    const fetchNotes = async () => {
+        try {
+            // On peut choisir de remettre isLoading à true ou non selon l'effet visuel désiré
+            // Ici on recharge silencieusement si c'est un refresh, sauf si la liste est vide
+            if (notes.length === 0) setIsLoading(true);
+
+            const fetchedNotes = await getAllNotes();
+            setNotes(fetchedNotes as NoteDisplay[]);
+        } catch (err) {
+            console.error("Erreur chargement notes", err);
+            setError("Impossible d'invoquer vos écrits...");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Chargement initial
+    useEffect(() => {
+        fetchNotes();
+    }, []);
+
+    const recentNotes = useMemo(() => {
+        return [...notes].sort((a, b) => {
+            const dateA = a.updatedAt ? new Date(a.updatedAt) : new Date(a.createdAt);
+            const dateB = b.updatedAt ? new Date(b.updatedAt) : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime();
+        }).slice(0, 3);
+    }, [notes]);
+
     const handleNewGrimoire = () => {
         if (sidebarRef.current) {
             sidebarRef.current.openCreateModal();
         }
     };
 
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return "";
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    };
+
+    const getRecencyLabel = (note: NoteDisplay) => {
+        const date = note.updatedAt ? new Date(note.updatedAt) : new Date(note.createdAt);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 3600 * 24));
+
+        if (diffDays === 0) return { label: "Aujourd'hui", icon: "🌙" };
+        if (diffDays === 1) return { label: "Hier", icon: "🔮" };
+        return { label: formatDate(note.updatedAt || note.createdAt), icon: "🕯️" };
+    };
+
     return (
         <div className="home-root">
             <Ghost/>
             <Bats/>
-            {/* La Sidebar avec la ref attachée */}
-            <Sidebar ref={sidebarRef} />
+
+            {/* On passe la fonction de refresh à la Sidebar */}
+            <Sidebar ref={sidebarRef} onRefresh={fetchNotes} />
 
             <main className="main-area">
-                {/* --- DÉCORATION D'ARRIÈRE-PLAN --- */}
                 <div className="bg-orb orb-1" />
                 <div className="bg-orb orb-2" />
 
-                {/* --- TITRE --- */}
-                <div className="hero-center">
-                    <h1 className="home-title">
-                        Bienvenue, <span className="grimoire">Voyageur</span>
-                    </h1>
-                </div>
-
-                {/* --- ACTIONS PRINCIPALES --- */}
-                <div className="main-actions">
-                    {/* Bouton Nouveau Grimoire (Connecté à la Sidebar) */}
+                {/* --- BOUTON DÉCONNEXION (Haut Droite) --- */}
+                <div className="top-right-actions">
                     <button
-                        className="halloween-btn"
-                        onClick={handleNewGrimoire}
-                    >
-                        ✨ Nouveau Grimoire
-                    </button>
-
-                    {/* Bouton Logout (Connecté au AuthContext) */}
-                    <button
-                        className="halloween-btn"
+                        className="halloween-btn logout-btn"
                         onClick={logout}
-                        style={{ borderColor: '#dc3545', color: '#ffb3b3' }}
                     >
                         💀 Se déconnecter
                     </button>
                 </div>
 
-                {/* --- SECTION CARTES --- */}
+                {/* --- TITRE --- */}
+                <div className="hero-center">
+                    <h1 className="home-title">
+                        Bienvenue, <span className="grimoire">{user.firstname}</span>
+                    </h1>
+                    <p className="hero-subtitle">Prêt à écrire vos cauchemars ?</p>
+                </div>
+
+                <div className="main-actions">
+                    <button className="halloween-btn" onClick={handleNewGrimoire}>
+                        ✨ Nouveau Grimoire
+                    </button>
+                </div>
+
                 <section className="recent-section">
                     <h2 className="section-title">Vos écrits récents</h2>
-
-                    <div className="cards-grid">
-                        <div className="spooky-card">
-                            <div className="card-header">
-                                <span>Aujourd'hui</span>
-                                <span>🌙</span>
-                            </div>
-                            <h3>Notes du Crépuscule</h3>
-                            <p>Une ébauche de sortilège pour invoquer la pluie...</p>
+                    {isLoading ? (
+                        <div style={{ color: '#aaa', textAlign: 'center', marginTop: '2rem' }}>Invocation des notes en cours...</div>
+                    ) : error ? (
+                        <div style={{ color: '#dc3545', textAlign: 'center', marginTop: '2rem' }}>{error}</div>
+                    ) : recentNotes.length > 0 ? (
+                        <div className="cards-grid">
+                            {recentNotes.map((note) => {
+                                const { label, icon } = getRecencyLabel(note);
+                                return (
+                                    <div key={note.id} className="spooky-card">
+                                        <div className="card-header">
+                                            <span>{label}</span>
+                                            <span>{icon}</span>
+                                        </div>
+                                        <h3>{note.name}</h3>
+                                        <p>{note.content ? (note.content.substring(0, 60) + "...") : "Contenu mystérieux..."}</p>
+                                        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: 'auto', paddingTop: '10px' }}>
+                                            {note.updatedAt ? "Modifié" : "Créé"}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-
-                        <div className="spooky-card">
-                            <div className="card-header">
-                                <span>Hier</span>
-                                <span>🔮</span>
-                            </div>
-                            <h3>Potions Interdites</h3>
-                            <p>Ingrédients : Racine de mandragore, bave de crapaud...</p>
+                    ) : (
+                        <div className="empty-state" style={{ textAlign: 'center', color: '#888' }}>
+                            <p>Le grimoire est vide... Commencez par créer une note !</p>
                         </div>
-
-                        <div className="spooky-card">
-                            <div className="card-header">
-                                <span>Semaine dernière</span>
-                                <span>🕯️</span>
-                            </div>
-                            <h3>Rituels Anciens</h3>
-                            <p>Ne pas oublier d'allumer les bougies dans le sens anti-horaire.</p>
-                        </div>
-                    </div>
+                    )}
                 </section>
             </main>
         </div>
