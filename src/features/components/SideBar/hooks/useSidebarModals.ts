@@ -8,6 +8,8 @@ export interface UseSidebarModalsType {
     setIsCreateOpen: (v: boolean) => void;
     creationType: CreationType;
     targetParentId: number | null;
+    // CORRECTION : Ajout de la définition manquante
+    setTargetParentId: (v: number | null) => void;
     openCreateModal: (type: CreationType, parentId?: number | null) => void;
 
     // RENAME
@@ -79,9 +81,21 @@ export const useSidebarModals = (): UseSidebarModalsType => {
     };
 
     return {
-        isCreateOpen, setIsCreateOpen, targetParentId, setTargetParentId: setTargetParentId as any, creationType, openCreateModal,
+        // CREATE
+        isCreateOpen,
+        setIsCreateOpen,
+        targetParentId,
+        setTargetParentId, // Plus besoin de 'as any'
+        creationType,
+        openCreateModal,
+
+        // RENAME
         isRenameOpen, setIsRenameOpen, renameValue, setRenameValue, targetRenameId, openRenameModal,
+
+        // DELETE
         isDeleteOpen, setIsDeleteOpen, targetDeleteId, openDeleteModal,
+
+        // EXPORT
         isExportOpen, setIsExportOpen, targetExportId, exportTargetName, exportItemType, openExportModal
     };
 };
