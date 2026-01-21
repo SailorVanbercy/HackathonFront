@@ -123,6 +123,8 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         };
     }, []);
 
+    // @ts-ignore
+    // @ts-ignore
     return (
         <>
             <aside

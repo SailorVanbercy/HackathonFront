@@ -106,9 +106,6 @@ export const HomePage = () => {
                     <button className="halloween-btn" onClick={handleNewGrimoire}>
                         ✨ Nouveau Grimoire
                     </button>
-                    <button className="halloween-btn" onClick={logout} style={{ borderColor: '#dc3545', color: '#ffb3b3' }}>
-                        💀 Se déconnecter
-                    </button>
                 </div>
 
                 <section className="recent-section">

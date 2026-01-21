@@ -98,7 +98,6 @@ function App() {
           <Route path="/note/:id" element={<NoteDetails />}></Route>
         </Route>
       </Routes>
-
       <Footer />
     </div>
   );
