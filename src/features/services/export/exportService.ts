@@ -3,7 +3,7 @@ import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import { getAllNotes, getNotesByDirectory, getNoteById } from '../notes/noteService'; //
 
-// Fonction utilitaire pour récupérer le contenu texte d'une note
+//Fonction utilitaire pour récupérer le contenu texte d'une note
 const fetchNoteContent = async (noteId: number): Promise<string> => {
     try {
         const note = await getNoteById(noteId); //
