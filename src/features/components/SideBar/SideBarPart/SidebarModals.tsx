@@ -21,13 +21,11 @@ const ModalWrapper: React.FC<{
 
         if (isOpen) {
             window.addEventListener('keydown', handleKeyDown, { capture: true });
-            // Empêche le scroll du body quand la modale est ouverte
             document.body.style.overflow = 'hidden';
         }
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown, { capture: true });
-            // Réactive le scroll
             document.body.style.overflow = 'unset';
         };
     }, [isOpen, onClose]);
@@ -54,9 +52,11 @@ const ModalWrapper: React.FC<{
 
 // --- MODALE DE CRÉATION (Dossier OU Note) ---
 interface CreateFolderModalProps {
-    isOpen: boolean; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
+    isOpen: boolean; onClose: () => void;
+    onSubmit: (e: React.FormEvent) => void;
     folderName: string; setFolderName: (val: string) => void;
-    parentId: string; setParentId: (val: string) => void;
+    parentId: number | null;
+    setParentId: (val: number | null) => void;
     treeData: TreeNode[]; creationType?: 'directory' | 'note';
 }
 
@@ -68,6 +68,44 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     const placeholder = isNote ? "Titre de la note..." : "Nom du dossier...";
     const buttonLabel = isNote ? "Créer la Note" : "Créer le Dossier";
     const icon = isNote ? "🪶" : "📖";
+
+    const currentSelectValue = parentId ? `dir-${parentId}` : "root";
+
+    const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const val = e.target.value;
+        if (val === "root") {
+            setParentId(null);
+        } else {
+            const num = Number(val.replace("dir-", "").replace("note-", ""));
+            setParentId(isNaN(num) ? null : num);
+        }
+    };
+
+    // --- CORRECTION : Fonction récursive pour afficher les sous-dossiers ---
+    const renderDirectoryOptions = (nodes: TreeNode[], depth = 0): React.ReactNode[] => {
+        let options: React.ReactNode[] = [];
+
+        nodes.forEach(node => {
+            // On ne veut afficher que les DOSSIERS comme parents possibles
+            if (node.type === 'directory') {
+                // On ajoute des espaces insécables (\u00A0) pour l'indentation visuelle
+                const prefix = "\u00A0\u00A0\u00A0".repeat(depth);
+
+                options.push(
+                    <option key={node.id} value={node.id}>
+                        {prefix}{depth > 0 ? "└─ " : ""}{node.name}
+                    </option>
+                );
+
+                // Si le dossier a des enfants, on rappelle la fonction (récursion)
+                if (node.children && node.children.length > 0) {
+                    options = [...options, ...renderDirectoryOptions(node.children, depth + 1)];
+                }
+            }
+        });
+
+        return options;
+    };
 
     return (
         <ModalWrapper isOpen={isOpen} onClose={onClose}>
@@ -86,16 +124,14 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                 </div>
                 <div>
                     <label className="modal-label">Emplacement (Parent) :</label>
-                    {/* CORRECTION ICI : on ajoute || "root" pour éviter le null */}
                     <select
                         className="magic-select"
-                        value={parentId || "root"}
-                        onChange={(e) => setParentId(e.target.value)}
+                        value={currentSelectValue}
+                        onChange={handleParentChange}
                     >
                         <option value="root">-- Racine (Défaut) --</option>
-                        {treeData.map((node) => (
-                            <option key={node.id} value={node.id}>{node.name}</option>
-                        ))}
+                        {/* Appel de la fonction récursive ici */}
+                        {renderDirectoryOptions(treeData)}
                     </select>
                 </div>
                 <div className="modal-actions">
@@ -107,7 +143,7 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     );
 };
 
-// --- MODALE DE RENOMMAGE ---
+// --- MODALE DE RENOMMAGE (Inchangée) ---
 interface RenameModalProps {
     isOpen: boolean; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
     value: string; setValue: (val: string) => void;
@@ -131,7 +167,7 @@ export const RenameModal: React.FC<RenameModalProps> = ({ isOpen, onClose, onSub
     );
 };
 
-// --- MODALE DE SUPPRESSION ---
+// --- MODALE DE SUPPRESSION (Inchangée) ---
 interface DeleteModalProps {
     isOpen: boolean; onClose: () => void; onConfirm: () => void;
 }
@@ -155,7 +191,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, onCon
     );
 };
 
-// --- MODALE D'EXPORTATION ---
+// --- MODALE D'EXPORTATION (Inchangée) ---
 interface ExportModalProps {
     isOpen: boolean; onClose: () => void; onConfirm: (format: 'zip' | 'pdf') => void; folderName?: string;
 }

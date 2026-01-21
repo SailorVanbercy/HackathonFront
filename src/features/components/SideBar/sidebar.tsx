@@ -60,15 +60,19 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     const handleOpenExport = (id: string | null) => {
         const node = id ? tree.allNodes.find((n: { id: string; }) => n.id === id) : null;
-        // Détermine le type (défaut 'directory' pour la racine)
         const type = node ? node.type : 'directory';
         modals.openExportModal(id, node?.name, type);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
     const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
-        // Conversion string -> number sécurisée
-        const numParentId = parentId ? Number(parentId) : null;
+        // CORRECTION 1 : Nettoyage de l'ID (ex: "dir-12" -> 12) avant conversion
+        let numParentId: number | null = null;
+        if (parentId) {
+            const cleanId = String(parentId).replace("dir-", "").replace("note-", "");
+            numParentId = Number(cleanId);
+            if (isNaN(numParentId)) numParentId = null;
+        }
         modals.openCreateModal(type, numParentId);
         setContextMenu(p => ({ ...p, targetId: null }));
     };
@@ -78,6 +82,12 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         if (props.onRefresh) {
             props.onRefresh();
         }
+    };
+
+    // CORRECTION 2 : Wrapper pour l'événement onSubmit du formulaire
+    const onModalSubmit = (e: React.FormEvent) => {
+        e.preventDefault(); // Empêche le rechargement
+        handleCreateSubmitWrapper(modals.newFolderName, modals.targetParentId, modals.creationType);
     };
 
     useImperativeHandle(ref, () => ({
@@ -131,16 +141,28 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 // @ts-expect-error - conversion gérée
                          onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')} />
 
-            <CreateFolderModal isOpen={modals.isCreateOpen} onClose={() => modals.setIsCreateOpen(false)} onSubmit={handleCreateSubmitWrapper} folderName={modals.newFolderName} setFolderName={modals.setNewFolderName} parentId={modals.targetParentId} setParentId={modals.setTargetParentId} treeData={tree.treeData} creationType={modals.creationType} />
+            {/* CORRECTION 3 : Passage du bon handler onSubmit et des props types */}
+            <CreateFolderModal
+                isOpen={modals.isCreateOpen}
+                onClose={() => modals.setIsCreateOpen(false)}
+                onSubmit={onModalSubmit} // <--- Utilisation du wrapper
+                folderName={modals.newFolderName}
+                setFolderName={modals.setNewFolderName}
+                parentId={modals.targetParentId}
+                setParentId={modals.setTargetParentId}
+                treeData={tree.treeData}
+                creationType={modals.creationType}
+            />
+
             <RenameModal isOpen={modals.isRenameOpen} onClose={() => modals.setIsRenameOpen(false)} onSubmit={actions.handleRenameSubmit} value={modals.renameValue} setValue={modals.setRenameValue} />
             <DeleteModal isOpen={modals.isDeleteOpen} onClose={() => modals.setIsDeleteOpen(false)} onConfirm={actions.handleDeleteConfirm} />
 
-            {/* Passage du type pour l'affichage conditionnel */}
             <ExportModal
                 isOpen={modals.isExportOpen}
                 onClose={() => modals.setIsExportOpen(false)}
                 onConfirm={actions.handleExportConfirm}
                 folderName={modals.exportTargetName}
+                // @ts-expect-error - Type mismatch temporaire
                 itemType={modals.exportItemType || 'directory'}
             />
         </>

@@ -93,7 +93,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         <Route element={<RequireAuth />}>
           <Route path={"/home"} element={<HomePage />} />
-          <Route path={"/"} element={<LoginPage />}></Route>
+          <Route path={"/"} element={<HomePage />}></Route>
           <Route path="/note" element={<NoteDetails />}></Route>
           <Route path="/note/:id" element={<NoteDetails />}></Route>
         </Route>
