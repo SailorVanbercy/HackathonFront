@@ -8,7 +8,7 @@ import { CreateFolderModal, CreateNoteModal, RenameModal, DeleteModal, ExportMod
 import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
-
+//react
 export interface SidebarHandle {
     openCreateModal: () => void;
     openExportModal: () => void;
