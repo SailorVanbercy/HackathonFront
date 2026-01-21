@@ -78,7 +78,7 @@ export const useSidebarActions = ({ refreshTree, modals, setExpanded }: UseSideb
 
         try {
             if (type === 'directory') {
-                if (format === 'zip') await exportAsZip(name, cleanId);
+                if (format === 'zip') await exportAsZip(name);
             } else if (type === 'note' && numId !== null) {
                 if (format === 'pdf') await exportNoteAsPdf(name, numId);
                 else if (format === 'md') await exportNoteAsMarkdown(name, numId);
