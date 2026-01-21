@@ -84,10 +84,22 @@ export const HomePage = () => {
                 <div className="bg-orb orb-1" />
                 <div className="bg-orb orb-2" />
 
+                {/* --- BOUTON DÉCONNEXION (Haut Droite) --- */}
+                <div className="top-right-actions">
+                    <button
+                        className="halloween-btn logout-btn"
+                        onClick={logout}
+                    >
+                        💀 Se déconnecter
+                    </button>
+                </div>
+
+                {/* --- TITRE --- */}
                 <div className="hero-center">
                     <h1 className="home-title">
                         Bienvenue, <span className="grimoire">{user.firstname}</span>
                     </h1>
+                    <p className="hero-subtitle">Prêt à écrire vos cauchemars ?</p>
                 </div>
 
                 <div className="main-actions">
