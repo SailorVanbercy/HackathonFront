@@ -115,10 +115,6 @@ const NoteDetails = () => {
 
             <div className={`grim-container ${isReadOnly ? "read-mode" : "edit-mode"}`}>
                 <div className="grim-header">
-                    <button onClick={() => navigate("/home")} className="grim-btn back-btn">
-                        ⬅ Retour
-                    </button>
-
                     <div className="grim-title-container">
                         {isReadOnly ? (
                             <h1 className="grim-title-display">{title}</h1>
