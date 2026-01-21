@@ -23,13 +23,12 @@ const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
-    // 1. CORRECTION : On gère l'état de la recherche ICI
+    // État de recherche
     const [search, setSearch] = useState("");
 
-    // 2. CORRECTION : On passe la recherche au hook
     const tree = useSidebarTree(search);
-
     const modals = useSidebarModals();
+
     const actions = useSidebarActions({
         refreshTree: async () => { await tree.refreshTree(); if (props.onRefresh) props.onRefresh(); },
         modals,
@@ -39,7 +38,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
 
-    // 3. CORRECTION : On stocke aussi le TYPE de la cible (dossier ou note)
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
@@ -49,11 +47,11 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
+
     const toggleCollapse = () => setIsCollapsed(s => !s);
 
     const handleContextMenu = (e: React.MouseEvent, id: string, type: 'directory' | 'note') => {
         e.preventDefault();
-        // On sauvegarde le type pour savoir quelles options afficher
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id, targetType: type });
     };
 
@@ -121,18 +119,21 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
                 {!isCollapsed && (
                     <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
-                        {/* 4. CORRECTION : On passe search et setSearch locaux */}
+
+                        {/* Le SidebarHeader contient maintenant le petit bouton Home et la Recherche */}
                         <SidebarHeader
                             search={search}
                             setSearch={setSearch}
                             isCollapsed={isCollapsed}
                             onOpenCreate={() => handleOpenCreate(null, 'directory')}
                         />
+
                         <div style={{ padding: '0 10px 10px 10px' }}>
                             <button onClick={() => handleOpenCreate(null, 'note')} style={{ width: '100%', padding: '6px', background: '#2a0a2e', border: '1px dashed #bfaFbF', color: '#bfaFbF', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>
                                 + Nouvelle Page
                             </button>
                         </div>
+
                         <SidebarTree
                             isLoading={tree.isLoading}
                             visibleItems={tree.visibleItems}
@@ -151,7 +152,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 )}
             </aside>
 
-            {/* 5. CORRECTION : On passe targetType et onNewFolder */}
             <ContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
