@@ -1,228 +1,269 @@
-import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import type { TreeNode } from "./sidebarTypes";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
+import type { DirectoryDTO } from "../../../services/directories/directoryService";
 
-// --- WRAPPER UNIVERSEL ---
-const ModalWrapper: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    children: React.ReactNode;
-    className?: string;
-}> = ({ isOpen, onClose, children, className = "modal-content" }) => {
-
+// --- HOOK UTILITAIRE (Inchangé) ---
+const useModalShortcut = (isOpen: boolean, onClose: () => void, onConfirm?: () => void) => {
     useEffect(() => {
+        // Si la modale est fermée, on ne fait rien
+        if (!isOpen) return;
+
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' || e.key === 'Esc') {
-                e.preventDefault();
-                e.stopPropagation();
+            // ECHAP : On ferme toujours
+            if (e.key === "Escape" || e.key === "Esc") {
+                // On évite preventDefault sur Echap car ça peut bloquer la sortie de plein écran navigateur
                 onClose();
+            }
+            // ENTER : On confirme si une action est fournie
+            if (e.key === "Enter" && onConfirm) {
+                e.preventDefault(); // Empêche le saut de ligne ou submit classique
+                onConfirm();
             }
         };
 
-        if (isOpen) {
-            window.addEventListener('keydown', handleKeyDown, { capture: true });
-            document.body.style.overflow = 'hidden';
-        }
+        // On écoute sur document plutôt que window pour être plus sûr dans le DOM React
+        document.addEventListener("keydown", handleKeyDown);
 
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown, { capture: true });
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen, onClose]);
+        // Nettoyage
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen, onClose, onConfirm]);
+};
+
+// --- PROPS (Inchangées) ---
+interface CreateFolderModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (name: string, parentId: number | null) => void;
+    directories: DirectoryDTO[];
+}
+
+interface CreateNoteModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (name: string, directoryId: number) => void;
+    directories: DirectoryDTO[];
+}
+
+interface CommonModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+// --- VARIANTS (Inchangés) ---
+const overlayVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+};
+
+const modalVariants: Variants = {
+    hidden: { scale: 0.8, opacity: 0, y: 20 },
+    visible: {
+        scale: 1,
+        opacity: 1,
+        y: 0,
+        transition: { type: "spring", stiffness: 300, damping: 25 }
+    },
+    exit: {
+        scale: 0.8,
+        opacity: 0,
+        y: -20,
+        transition: { duration: 0.2 }
+    },
+};
+
+// --- MODALE DOSSIER (CORRIGÉE POUR ANIMATION DE SORTIE) ---
+export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
+                                                                        isOpen, onClose, onSubmit, directories
+                                                                    }) => {
+    const [name, setName] = useState("");
+    const [selectedParentId, setSelectedParentId] = useState<string>("");
+
+    const rootDir = directories.find(d => d.name.toLowerCase() === "root");
+    const visibleDirs = directories.filter(d => d.name.toLowerCase() !== "root");
+
+    const activeParentId = selectedParentId !== "" ? selectedParentId : (rootDir ? rootDir.id.toString() : "");
+
+    const handleSubmit = () => {
+        if (!name.trim()) return;
+        const parentIdNumber = activeParentId ? parseInt(activeParentId, 10) : null;
+        onSubmit(name, parentIdNumber);
+        setName("");
+        onClose();
+    };
+
+    useModalShortcut(isOpen, onClose, name.trim() ? handleSubmit : undefined);
+
+    // SUPPRIMÉ ICI : if (!isOpen) return null;
 
     return (
         <AnimatePresence>
+            {/* AJOUTÉ ICI : La condition est déplacée à l'intérieur */}
             {isOpen && (
-                <div className="modal-overlay" onClick={onClose}>
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        transition={{ duration: 0.2 }}
-                        className={className}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {children}
+                <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
+                    <motion.div className="modal-content" variants={modalVariants}>
+                        <h2 className="modal-title">Nouveau Grimoire</h2>
+                        <div className="modal-body">
+                            <div>
+                                <label className="modal-label">Nom du dossier</label>
+                                <input autoFocus className="magic-input" placeholder="Ex: Sortilèges" value={name} onChange={e => setName(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="modal-label">Emplacement</label>
+                                <select className="magic-select" value={activeParentId} onChange={e => setSelectedParentId(e.target.value)}>
+                                    {rootDir && <option value={rootDir.id}>Racine</option>}
+                                    {visibleDirs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn-ghost" onClick={onClose}>Annuler</button>
+                            <button className="btn-magic" onClick={handleSubmit} disabled={!name.trim()}>Créer</button>
+                        </div>
                     </motion.div>
-                </div>
+                </motion.div>
             )}
         </AnimatePresence>
     );
 };
 
-// --- MODALE DE CRÉATION (Dossier OU Note) ---
-interface CreateFolderModalProps {
-    isOpen: boolean; onClose: () => void;
-    onSubmit: (e: React.FormEvent) => void;
-    folderName: string; setFolderName: (val: string) => void;
-    parentId: number | null;
-    setParentId: (val: number | null) => void;
-    treeData: TreeNode[]; creationType?: 'directory' | 'note';
-}
+// --- MODALE NOTE (CORRIGÉE POUR ANIMATION DE SORTIE) ---
+export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
+                                                                    isOpen, onClose, onSubmit, directories
+                                                                }) => {
+    const [name, setName] = useState("");
+    const [userSelectedDirId, setUserSelectedDirId] = useState<string | null>(null);
 
-export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
-                                                                        isOpen, onClose, onSubmit, folderName, setFolderName, parentId, setParentId, treeData, creationType = 'directory'
-                                                                    }) => {
-    const isNote = creationType === 'note';
-    const title = isNote ? "Invocation d'un Parchemin" : "Invocation d'un Grimoire";
-    const placeholder = isNote ? "Titre de la note..." : "Nom du dossier...";
-    const buttonLabel = isNote ? "Créer la Note" : "Créer le Dossier";
-    const icon = isNote ? "🪶" : "📖";
+    const rootDir = directories.find(d => d.name.toLowerCase() === "root");
+    const otherDirs = directories.filter(d => d.name.toLowerCase() !== "root");
 
-    const currentSelectValue = parentId ? `dir-${parentId}` : "root";
+    const defaultDirId = rootDir
+        ? rootDir.id.toString()
+        : (directories.length > 0 ? directories[0].id.toString() : "");
 
-    const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        if (val === "root") {
-            setParentId(null);
-        } else {
-            const num = Number(val.replace("dir-", "").replace("note-", ""));
-            setParentId(isNaN(num) ? null : num);
-        }
+    const activeDirId = userSelectedDirId !== null ? userSelectedDirId : defaultDirId;
+
+    const handleSubmit = () => {
+        if (!name.trim()) return;
+        const dirIdNumber = activeDirId ? parseInt(activeDirId, 10) : 0;
+        onSubmit(name, dirIdNumber);
+        setName("");
+        setUserSelectedDirId(null);
+        onClose();
     };
 
-    // --- CORRECTION : Fonction récursive pour afficher les sous-dossiers ---
-    const renderDirectoryOptions = (nodes: TreeNode[], depth = 0): React.ReactNode[] => {
-        let options: React.ReactNode[] = [];
+    useModalShortcut(isOpen, onClose, name.trim() ? handleSubmit : undefined);
 
-        nodes.forEach(node => {
-            // On ne veut afficher que les DOSSIERS comme parents possibles
-            if (node.type === 'directory') {
-                // On ajoute des espaces insécables (\u00A0) pour l'indentation visuelle
-                const prefix = "\u00A0\u00A0\u00A0".repeat(depth);
-
-                options.push(
-                    <option key={node.id} value={node.id}>
-                        {prefix}{depth > 0 ? "└─ " : ""}{node.name}
-                    </option>
-                );
-
-                // Si le dossier a des enfants, on rappelle la fonction (récursion)
-                if (node.children && node.children.length > 0) {
-                    options = [...options, ...renderDirectoryOptions(node.children, depth + 1)];
-                }
-            }
-        });
-
-        return options;
-    };
+    // SUPPRIMÉ ICI : if (!isOpen) return null;
 
     return (
-        <ModalWrapper isOpen={isOpen} onClose={onClose}>
-            <h3 className="modal-title">{icon} {title}</h3>
-            <form onSubmit={onSubmit} className="modal-body">
-                <div>
-                    <label className="modal-label">Nom :</label>
-                    <input
-                        autoFocus
-                        className="magic-input"
-                        type="text"
-                        placeholder={placeholder}
-                        value={folderName}
-                        onChange={(e) => setFolderName(e.target.value)}
-                    />
-                </div>
-                <div>
-                    <label className="modal-label">Emplacement (Parent) :</label>
-                    <select
-                        className="magic-select"
-                        value={currentSelectValue}
-                        onChange={handleParentChange}
-                    >
-                        <option value="root">-- Racine (Défaut) --</option>
-                        {/* Appel de la fonction récursive ici */}
-                        {renderDirectoryOptions(treeData)}
-                    </select>
-                </div>
-                <div className="modal-actions">
-                    <button type="button" onClick={onClose} className="btn-ghost">Annuler</button>
-                    <button type="submit" className="btn-magic">{buttonLabel}</button>
-                </div>
-            </form>
-        </ModalWrapper>
+        <AnimatePresence>
+            {/* AJOUTÉ ICI : La condition est déplacée à l'intérieur */}
+            {isOpen && (
+                <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
+                    <motion.div className="modal-content" variants={modalVariants}>
+                        <h2 className="modal-title">Nouveau Parchemin</h2>
+                        <div className="modal-body">
+                            <div>
+                                <label className="modal-label">Titre</label>
+                                <input autoFocus className="magic-input" placeholder="Titre..." value={name} onChange={e => setName(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="modal-label">Grimoire</label>
+                                <select className="magic-select" value={activeDirId} onChange={e => setUserSelectedDirId(e.target.value)}>
+                                    {rootDir && <option value={rootDir.id}>Racine</option>}
+                                    {otherDirs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="modal-actions">
+                            <button className="btn-ghost" onClick={onClose}>Annuler</button>
+                            <button className="btn-magic" onClick={handleSubmit} disabled={!name.trim()}>Incantation</button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 
-// --- MODALE DE RENOMMAGE (Inchangée) ---
-interface RenameModalProps {
-    isOpen: boolean; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
-    value: string; setValue: (val: string) => void;
-}
-
+// --- MODALE RENAME (Déjà correcte) ---
+interface RenameModalProps extends CommonModalProps { onSubmit: (id: string, name: string) => void; value: string; setValue: (v: string) => void; }
 export const RenameModal: React.FC<RenameModalProps> = ({ isOpen, onClose, onSubmit, value, setValue }) => {
+
+    useModalShortcut(isOpen, onClose, () => onSubmit("", value));
+
     return (
-        <ModalWrapper isOpen={isOpen} onClose={onClose}>
-            <h3 className="modal-title">🖋️ Renommer</h3>
-            <form onSubmit={onSubmit} className="modal-body">
-                <div>
-                    <label className="modal-label">Nouveau nom :</label>
-                    <input autoFocus className="magic-input" type="text" value={value} onChange={(e) => setValue(e.target.value)} />
-                </div>
-                <div className="modal-actions">
-                    <button type="button" onClick={onClose} className="btn-ghost">Annuler</button>
-                    <button type="submit" className="btn-magic">Valider</button>
-                </div>
-            </form>
-        </ModalWrapper>
+        <AnimatePresence>
+            {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
+                <motion.div className="modal-content" variants={modalVariants}>
+                    <h2 className="modal-title">Renommer</h2>
+                    <input autoFocus className="magic-input" value={value} onChange={e => setValue(e.target.value)} />
+                    <div className="modal-actions">
+                        <button className="btn-ghost" onClick={onClose}>Annuler</button>
+                        <button className="btn-magic" onClick={() => onSubmit("", value)}>Valider</button>
+                    </div>
+                </motion.div>
+            </motion.div>}
+        </AnimatePresence>
     );
 };
 
-// --- MODALE DE SUPPRESSION (Inchangée) ---
-interface DeleteModalProps {
-    isOpen: boolean; onClose: () => void; onConfirm: () => void;
-}
-
+// --- MODALE DELETE (Déjà correcte) ---
+interface DeleteModalProps extends CommonModalProps { onConfirm: () => void; }
 export const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, onConfirm }) => {
+
+    useModalShortcut(isOpen, onClose, onConfirm);
+
     return (
-        <ModalWrapper isOpen={isOpen} onClose={onClose} className="modal-content danger">
-            <h3 className="modal-title" style={{color: '#ef4444', backgroundImage: 'none', WebkitTextFillColor: 'initial'}}>
-                🔥 Destruction Définitive
-            </h3>
-            <div className="modal-body">
-                <p style={{lineHeight: '1.6'}}>Êtes-vous certain de vouloir brûler ce contenu ?<br/>Cette action est <strong style={{color: '#ef4444'}}>irréversible</strong>.</p>
-            </div>
-            <div className="modal-actions">
-                <button onClick={onClose} className="btn-ghost">Non, garder</button>
-                <button onClick={onConfirm} className="btn-magic" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.3)' }}>
-                    Oui, détruire
-                </button>
-            </div>
-        </ModalWrapper>
+        <AnimatePresence>
+            {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
+                <motion.div className="modal-content" variants={modalVariants}>
+                    <h2 className="modal-title" style={{ color: '#ef4444' }}>Destruction</h2>
+                    <p>Êtes-vous sûr de vouloir détruire cet élément ?</p>
+                    <div className="modal-actions">
+                        <button className="btn-ghost" onClick={onClose}>Non</button>
+                        <button className="btn-magic" onClick={onConfirm} style={{ background: '#ef4444' }}>OUI</button>
+                    </div>
+                </motion.div>
+            </motion.div>}
+        </AnimatePresence>
     );
 };
 
-// --- MODALE D'EXPORTATION (Inchangée) ---
-interface ExportModalProps {
-    isOpen: boolean; onClose: () => void; onConfirm: (format: 'zip' | 'pdf') => void; folderName?: string;
-}
+// --- MODALE EXPORT (Déjà correcte) ---
+interface ExportModalProps extends CommonModalProps { onConfirm: (f: 'zip' | 'pdf' | 'md') => void; folderName?: string; itemType: 'directory' | 'note'; }
+export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, folderName, itemType }) => {
 
-export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, folderName }) => {
+    useModalShortcut(isOpen, onClose);
+
     return (
-        <ModalWrapper isOpen={isOpen} onClose={onClose}>
-            <h3 className="modal-title">📦 Exporter {folderName ? `"${folderName}"` : "le Grimoire"}</h3>
-            <div className="modal-body">
-                <p>Sous quelle forme souhaitez-vous matérialiser ces connaissances ?</p>
-
-                <div className="export-options">
-                    <div className="export-card" onClick={() => onConfirm('zip')}>
-                        <div className="export-icon">📚</div>
-                        <div className="export-info">
-                            <h4>Archive ZIP</h4>
-                            <p>Markdown + Images</p>
-                        </div>
+        <AnimatePresence>
+            {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
+                <motion.div className="modal-content" variants={modalVariants}>
+                    <h2 className="modal-title">Exporter {folderName}</h2>
+                    <div className="export-options">
+                        {itemType === 'directory' && (
+                            <div className="export-card" onClick={() => onConfirm('zip')}>
+                                <div className="export-icon">📦</div>
+                                <div className="export-info"><h4>Archive ZIP</h4><p>Tout le contenu</p></div>
+                            </div>
+                        )}
+                        {itemType === 'note' && (
+                            <>
+                                <div className="export-card" onClick={() => onConfirm('pdf')}>
+                                    <div className="export-icon">📜</div>
+                                    <div className="export-info"><h4>Document PDF</h4><p>Format imprimable</p></div>
+                                </div>
+                                <div className="export-card" onClick={() => onConfirm('md')}>
+                                    <div className="export-icon">📝</div>
+                                    <div className="export-info"><h4>Markdown</h4><p>Format brut</p></div>
+                                </div>
+                            </>
+                        )}
                     </div>
-                    <div className="export-card" onClick={() => onConfirm('pdf')}>
-                        <div className="export-icon">📜</div>
-                        <div className="export-info">
-                            <h4>Document PDF</h4>
-                            <p>Format lecture imprimable</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="modal-actions">
-                <button onClick={onClose} className="btn-ghost" style={{width: '100%'}}>Annuler</button>
-            </div>
-        </ModalWrapper>
+                    <div className="modal-actions"><button className="btn-ghost" onClick={onClose}>Fermer</button></div>
+                </motion.div>
+            </motion.div>}
+        </AnimatePresence>
     );
 };

@@ -1,18 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GiQuill, GiTrashCan, GiShare } from 'react-icons/gi';
+import { GiQuill, GiTrashCan, GiShare, GiFiles } from 'react-icons/gi';
 
 interface ContextMenuProps {
     x: number;
     y: number;
     targetId: string | null;
+    targetType: 'directory' | 'note' | null;
     onClose: () => void;
     onRename: (id: string) => void;
     onDelete: (id: string) => void;
-    onExport: (id: string) => void; // AJOUT
+    onExport: (id: string) => void;
+    onNewFolder: (parentId: string) => void;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClose, onRename, onDelete, onExport }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({
+                                                            x, y, targetId, targetType, onClose, onRename, onDelete, onExport, onNewFolder
+                                                        }) => {
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Fermer si on clique ailleurs
@@ -27,6 +31,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClos
         return () => document.removeEventListener('click', handleClick);
     }, [onClose]);
 
+    // Fermer avec Echap
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape")
@@ -62,9 +67,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClos
                     minWidth: '150px'
                 }}
             >
-                <MenuButton onClick={() => onRename(targetId)} icon={<GiQuill />} label="Renommer" />
+                {/* On affiche "Nouveau Dossier" uniquement si on a fait clic-droit sur un dossier */}
+                {targetType === 'directory' && (
+                    <MenuButton
+                        onClick={() => onNewFolder(targetId)}
+                        icon={<GiFiles />}
+                        label="Nouveau Dossier"
+                    />
+                )}
 
-                {/* Bouton Exporter ajouté */}
+                <MenuButton onClick={() => onRename(targetId)} icon={<GiQuill />} label="Renommer" />
                 <MenuButton onClick={() => onExport(targetId)} icon={<GiShare />} label="Exporter" />
 
                 <div style={{ height: '1px', background: '#5c0a61', margin: '4px 0' }} />
@@ -75,8 +87,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, targetId, onClos
     );
 };
 
-// Composant interne helper pour les boutons
-const MenuButton = ({ onClick, icon, label, danger }: any) => (
+// --- CORRECTION DU TYPE ANY ---
+interface MenuButtonProps {
+    onClick: () => void;
+    icon: React.ReactNode;
+    label: string;
+    danger?: boolean;
+}
+
+const MenuButton: React.FC<MenuButtonProps> = ({ onClick, icon, label, danger }) => (
     <button
         onClick={onClick}
         style={{
@@ -91,7 +110,8 @@ const MenuButton = ({ onClick, icon, label, danger }: any) => (
             textAlign: 'left',
             borderRadius: '4px',
             fontSize: '0.9rem',
-            transition: 'background 0.2s'
+            transition: 'background 0.2s',
+            width: '100%'
         }}
         onMouseEnter={(e) => e.currentTarget.style.background = '#4b0050'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
