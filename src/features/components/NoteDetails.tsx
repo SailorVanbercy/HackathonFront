@@ -1,110 +1,200 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import TurndownService from "turndown"; // <--- 1. IMPORT DU CONVERTISSEUR
-import { useNavigate } from "react-router";
+import Link from "@tiptap/extension-link";
+import TurndownService from "turndown";
+import { marked } from "marked";
+import { useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
 import "./NoteDetails.css";
+import { getNoteById, updateNote } from "../services/notes/noteService"; 
 
 const NoteDetails = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  // Configuration de Tiptap (Plus simple, plus d'extension markdown ici)
+  // États
+  const [title, setTitle] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // NOUVEAU : État pour le mode lecture seule (Faux par défaut = Mode Écriture)
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
   const editor = useEditor({
-    extensions: [StarterKit],
-    content: `
-      <h1>Le Grimoire des Ombres</h1>
-      <p>Bienvenue, sorcier. Ce parchemin est magique :</p>
-      <ul>
-        <li>Tapez <code># </code> pour un grand titre</li>
-        <li>Tapez <code>- </code> pour une liste</li>
-        <li>Tapez <code>> </code> pour une citation mystique</li>
-      </ul>
-      <p>Essayez d'écrire ci-dessous...</p>
-    `,
-    editorProps: {
-      attributes: {
-        class: "tiptap-content",
-      },
-    },
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: false, autolink: true }),
+    ],
+    content: "",
+    editable: true, // Par défaut, on peut écrire
+    editorProps: { attributes: { class: "tiptap-content" } },
   });
 
-  const handleLogContent = () => {
+  // NOUVEAU : Effet pour synchroniser l'état React avec Tiptap
+  useEffect(() => {
     if (!editor) return;
+    // Si isReadOnly est true -> editable est false, et inversement
+    editor.setEditable(!isReadOnly);
+  }, [editor, isReadOnly]);
 
-    // 1. Récupérer le HTML (Ça marche toujours)
+  // Chargement des données
+  useEffect(() => {
+    if (!id || !editor) return;
+    const loadData = async () => {
+      try {
+        const note = await getNoteById(Number(id));
+        setTitle(note.name);
+        const htmlContent = note.content ? marked.parse(note.content) : "";
+
+        setTimeout(() => {
+          if (editor && !editor.isDestroyed) {
+            editor.commands.setContent(htmlContent);
+          }
+        }, 0);
+      } catch (error) {
+        console.error("Erreur chargement:", error);
+        navigate("/home");
+      }
+    };
+    loadData();
+  }, [id, editor, navigate]);
+
+  const setLink = useCallback(() => {
+    if (!editor) return;
+    const previousUrl = editor.getAttributes("link").href;
+    const url = window.prompt("URL du lien magique :", previousUrl);
+    if (url === null) return;
+    if (url === "") {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }, [editor]);
+
+  const handleSaveContent = async () => {
+    if (!editor) return;
+    setIsSaving(true);
+
     const html = editor.getHTML();
-
-    // 2. Convertir le HTML en Markdown via Turndown
     const turndownService = new TurndownService({
-      headingStyle: "atx", // Force les titres avec des # au lieu de soulignés
-      codeBlockStyle: "fenced", // Utilise ``` pour le code
+      headingStyle: "atx",
+      codeBlockStyle: "fenced",
     });
-
     const markdown = turndownService.turndown(html);
 
-    console.group("🔮 Contenu Capturé");
-    console.log("%c HTML (Pour le site) :", "color: orange;", html);
-    console.log(
-      "%c MARKDOWN (Pour la BDD) :",
-      "color: cyan; font-weight: bold;",
-      markdown,
-    );
-    console.groupEnd();
+    try {
+      await updateNote(Number(id), { name: title, content: markdown });
 
-    alert("Incantation capturée ! Vérifiez la console (F12).");
+      // NOUVEAU (Optionnel) : On passe en lecture seule après la sauvegarde pour confirmer ?
+      // Pour l'instant, je laisse le choix à l'utilisateur via le bouton,
+      // donc on reste en mode édition après sauvegarde.
+      alert("📜 Sortilège inscrit dans le marbre !");
+    } catch (error) {
+      //alert(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
   return (
-    <div className="grim-container">
+    <div className={`grim-container ${isReadOnly ? "read-mode" : "edit-mode"}`}>
       <div className="grim-header">
         <button onClick={() => navigate("/home")} className="grim-btn back-btn">
           ⬅ Retour
         </button>
 
-        <div className="grim-toolbar">
-          <button
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`tool-btn ${editor.isActive("bold") ? "active" : ""}`}
-            title="Gras"
-          >
-            B
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`tool-btn ${editor.isActive("italic") ? "active" : ""}`}
-            title="Italique"
-          >
-            I
-          </button>
-          <button
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-            className={`tool-btn ${editor.isActive("heading", { level: 1 }) ? "active" : ""}`}
-            title="Titre H1"
-          >
-            H1
-          </button>
-          <button
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-            className={`tool-btn ${editor.isActive("heading", { level: 2 }) ? "active" : ""}`}
-            title="Titre H2"
-          >
-            H2
-          </button>
+        {/* NOUVEAU : Affichage conditionnel du titre */}
+        <div className="grim-title-container">
+          {isReadOnly ? (
+            <h1 className="grim-title-display">{title}</h1>
+          ) : (
+            <input
+              type="text"
+              className="grim-title-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Titre du Sortilège..."
+            />
+          )}
         </div>
 
-        <button onClick={handleLogContent} className="grim-btn save-btn">
-          📜 Capturer le Sort
-        </button>
+        {/* NOUVEAU : La barre d'outils ne s'affiche qu'en mode édition */}
+        {!isReadOnly && (
+          <div className="grim-toolbar">
+            <button
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              className={`tool-btn ${editor.isActive("bold") ? "active" : ""}`}
+            >
+              B
+            </button>
+            <button
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              className={`tool-btn ${editor.isActive("italic") ? "active" : ""}`}
+            >
+              I
+            </button>
+            <button
+              onClick={setLink}
+              className={`tool-btn ${editor.isActive("link") ? "active" : ""}`}
+            >
+              🔗
+            </button>
+            <button
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 1 }).run()
+              }
+              className={`tool-btn ${editor.isActive("heading", { level: 1 }) ? "active" : ""}`}
+            >
+              H1
+            </button>
+            <button
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+              className={`tool-btn ${editor.isActive("heading", { level: 2 }) ? "active" : ""}`}
+            >
+              H2
+            </button>
+          </div>
+        )}
+
+        {/* NOUVEAU : Boutons d'actions (Switch Mode + Save) */}
+        <div className="grim-actions">
+          {isReadOnly ? (
+            <button
+              onClick={() => setIsReadOnly(false)}
+              className="grim-btn edit-btn"
+            >
+              ✏️ Modifier
+            </button>
+          ) : (
+            <>
+              {/* Bouton pour passer en mode lecture sans sauvegarder */}
+              <button
+                onClick={() => setIsReadOnly(true)}
+                className="grim-btn view-btn"
+                title="Mode Lecture"
+              >
+                👁️
+              </button>
+
+              <button
+                onClick={handleSaveContent}
+                className="grim-btn save-btn"
+                disabled={isSaving}
+              >
+                {isSaving ? "⏳..." : "💾 Sauvegarder"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="grim-paper" onClick={() => editor.chain().focus().run()}>
+      <div
+        className="grim-paper"
+        onClick={() => !isReadOnly && editor.chain().focus().run()}
+      >
         <EditorContent editor={editor} />
       </div>
     </div>
