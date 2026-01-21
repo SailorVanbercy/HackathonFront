@@ -43,7 +43,7 @@ interface GetNotesByDirResponse {
 }
 
 // --- APPELS API ---
-
+//push comment
 // 1. RÉCUPÉRATION GLOBALE
 // GET /api/notes
 export const getAllNotes = async (): Promise<NoteTreeItemDTO[]> => {
