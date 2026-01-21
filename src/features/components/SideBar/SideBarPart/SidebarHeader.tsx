@@ -1,15 +1,14 @@
 import React from "react";
-import { GiSpiderWeb, GiHealthNormal, GiHouse } from "react-icons/gi";
+import { GiSpiderWeb, GiHouse } from "react-icons/gi";
 import { useNavigate } from "react-router";
 
 interface SidebarHeaderProps {
     search: string;
     setSearch: (val: string) => void;
     isCollapsed: boolean;
-    onOpenCreate: () => void;
 }
 
-export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ search, setSearch, isCollapsed, onOpenCreate }) => {
+export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ search, setSearch }) => {
     const navigate = useNavigate();
 
     return (
@@ -71,23 +70,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ search, setSearch,
                     />
                 </div>
             </div>
-
-            {/* Bouton "Nouveau Grimoire" (affiché uniquement si sidebar ouverte) */}
-            {!isCollapsed && (
-                <button
-                    onClick={onOpenCreate}
-                    style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        width: '100%', padding: '6px', background: '#330033',
-                        border: '1px solid #ff6600', color: '#ffcc99', borderRadius: '6px',
-                        cursor: 'pointer', fontSize: '0.9rem', transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#4d004d'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#330033'}
-                >
-                    <GiHealthNormal style={{ fontSize: '0.8rem' }} /> Nouveau Grimoire
-                </button>
-            )}
         </div>
     );
 };
