@@ -23,14 +23,37 @@
     transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+/* --- Positionnement du Logout (Haut Droite) --- */
+.top-right-actions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+}
+
+/* Style spécifique pour le bouton logout */
+.logout-btn {
+    border-color: #dc3545;
+    color: #ffb3b3;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.8rem;
+    box-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+}
+.logout-btn:hover {
+    background: #4a0f0f;
+    box-shadow: 0 0 12px rgba(220, 53, 69, 0.8);
+}
+
 /* ---- TITRE DYNAMIQUE ---- */
 .hero-center {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    padding-top: max(20px, env(safe-area-inset-top));
+    padding-top: 50px; /* Un peu plus d'espace */
     display: flex;
+    flex-direction: column; /* Pour empiler titre et sous-titre */
+    align-items: center;
     justify-content: center;
     text-align: center;
     pointer-events: none;
@@ -43,8 +66,20 @@
     margin: 0;
     font-family: "Cinzel", serif;
     text-shadow: 0 0 10px #ff6600;
+    line-height: 1.2;
 }
 .grimoire { color: #ff6600; font-weight: bold; }
+
+/* Le nouveau sous-titre */
+.hero-subtitle {
+    margin-top: 10px;
+    font-size: 1.1rem;
+    color: #dcb3ff;
+    font-style: italic;
+    font-family: 'Cinzel', serif;
+    opacity: 0.8;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
 
 .halloween-btn {
     background: #330033;

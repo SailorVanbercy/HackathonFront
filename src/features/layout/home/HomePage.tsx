@@ -1,18 +1,16 @@
 import { useRef } from 'react';
 import Sidebar, { type SidebarHandle } from '../../components/SideBar/sidebar';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext'; //
 import './HomePage.css';
 import {Ghost} from "../../components/Ghost/Ghost.tsx";
 import {Bats} from "../../components/Bats/Bats.tsx";
 
 export const HomePage = () => {
-    // 1. Référence vers la Sidebar pour ouvrir la modale
     const sidebarRef = useRef<SidebarHandle>(null);
 
-    // 2. Hook d'authentification pour le logout
-    const { logout } = useAuth();
+    // On récupère 'user' en plus de 'logout' pour afficher le prénom
+    const { logout, user } = useAuth(); //
 
-    // 3. Fonction pour déclencher l'ouverture du menu "Nouveau Dossier" via la Sidebar
     const handleNewGrimoire = () => {
         if (sidebarRef.current) {
             sidebarRef.current.openCreateModal();
@@ -23,45 +21,43 @@ export const HomePage = () => {
         <div className="home-root">
             <Ghost/>
             <Bats/>
-            {/* La Sidebar avec la ref attachée */}
             <Sidebar ref={sidebarRef} />
 
             <main className="main-area">
-                {/* --- DÉCORATION D'ARRIÈRE-PLAN --- */}
                 <div className="bg-orb orb-1" />
                 <div className="bg-orb orb-2" />
+
+                {/* --- BOUTON DÉCONNEXION (Haut Droite) --- */}
+                <div className="top-right-actions">
+                    <button
+                        className="halloween-btn logout-btn"
+                        onClick={logout}
+                    >
+                        💀 Se déconnecter
+                    </button>
+                </div>
 
                 {/* --- TITRE --- */}
                 <div className="hero-center">
                     <h1 className="home-title">
-                        Bienvenue, <span className="grimoire">Voyageur</span>
+                        Bienvenue {user?.firstName} sur <span className="grimoire">The Lost Grimoire</span>
                     </h1>
+                    <p className="hero-subtitle">Prêt à écrire vos cauchemars ?</p>
                 </div>
 
-                {/* --- ACTIONS PRINCIPALES --- */}
+                {/* --- ACTIONS PRINCIPALES (Juste le Grimoire maintenant) --- */}
                 <div className="main-actions">
-                    {/* Bouton Nouveau Grimoire (Connecté à la Sidebar) */}
                     <button
                         className="halloween-btn"
                         onClick={handleNewGrimoire}
                     >
                         ✨ Nouveau Grimoire
                     </button>
-
-                    {/* Bouton Logout (Connecté au AuthContext) */}
-                    <button
-                        className="halloween-btn"
-                        onClick={logout}
-                        style={{ borderColor: '#dc3545', color: '#ffb3b3' }}
-                    >
-                        💀 Se déconnecter
-                    </button>
                 </div>
 
                 {/* --- SECTION CARTES --- */}
                 <section className="recent-section">
                     <h2 className="section-title">Vos écrits récents</h2>
-
                     <div className="cards-grid">
                         <div className="spooky-card">
                             <div className="card-header">
