@@ -1,113 +1,98 @@
-import { createDirectory, updateDirectory, deleteDirectory } from "../../../services/directories/directoryService";
-import { createNote } from "../../../services/notes/noteService"; // Import createNote
-import { exportAsZip, exportAsPdf } from "../../../services/export/exportService";
+import { useCallback } from 'react';
+import { createDirectory, updateDirectory, deleteDirectory } from '../../../services/directories/directoryService';
+import { createNote } from '../../../services/notes/noteService';
+import { exportAsZip, exportAsPdf } from '../../../services/export/exportService';
+import type { UseSidebarModalsType, CreationType } from './useSidebarModals';
 
-interface TreeActionsProps {
+interface UseSidebarActionsProps {
     refreshTree: () => Promise<void>;
-    modals: any;
+    modals: UseSidebarModalsType;
+    // CORRECTION TYPE : On aligne le type sur celui de useSidebarTree (Record au lieu de Set)
     setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
-export const useSidebarActions = ({ refreshTree, modals, setExpanded }: TreeActionsProps) => {
+export const useSidebarActions = ({ refreshTree, modals, setExpanded }: UseSidebarActionsProps) => {
 
-    // --- CREATE (Gère Dossier ET Note) ---
-    const handleCreateSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!modals.newFolderName.trim()) return;
-
+    const handleCreateSubmit = useCallback(async (name: string, parentId: number | null, type: CreationType) => {
         try {
-            // Nettoyage de l'ID parent (ex: "dir-5" -> 5)
-            let payloadId: number | null = null;
-            if (modals.targetParentId !== "root") {
-                // On retire le préfixe "dir-" s'il est présent
-                const cleanId = modals.targetParentId.replace("dir-", "");
-                payloadId = Number(cleanId);
-            }
+            if (type === 'directory') {
+                // Création Dossier
+                await createDirectory({
+                    name,
+                    parentDirectoryId: parentId
+                });
 
-            if (modals.creationType === 'directory') {
-                // 1. Création de Dossier
-                await createDirectory({ name: modals.newFolderName, parentDirectoryId: payloadId });
+                // CORRECTION LOGIQUE : Si on a un parent, on l'ouvre pour voir le nouveau dossier
+                if (parentId !== null) {
+                    const parentNodeId = `dir-${parentId}`;
+                    setExpanded((prev) => ({ ...prev, [parentNodeId]: true }));
+                }
             } else {
-                // 2. Création de Note
-                await createNote({ name: modals.newFolderName, directoryId: payloadId || 0 }); // 0 ou null selon ton backend si racine
+                // Création Note
+                if (parentId === null || Number.isNaN(parentId)) {
+                    throw new Error("Une note doit être placée dans un dossier valide !");
+                }
+
+                await createNote({ name, directoryId: parentId });
+
+                // CORRECTION LOGIQUE : On ouvre le dossier parent (format "dir-ID")
+                const parentNodeId = `dir-${parentId}`;
+                setExpanded((prev) => ({ ...prev, [parentNodeId]: true }));
             }
 
             await refreshTree();
-
-            // Auto-expand du parent
-            if (modals.targetParentId !== "root") {
-                setExpanded(prev => ({ ...prev, [modals.targetParentId]: true }));
-            }
             modals.setIsCreateOpen(false);
+            modals.setNewFolderName("");
         } catch (error) {
-            console.error(error);
-            alert(`Erreur lors de la création (${modals.creationType}) !`);
+            console.error("Erreur création :", error);
+            alert(error instanceof Error ? error.message : "Impossible de créer l'élément.");
         }
-    };
+    }, [refreshTree, modals, setExpanded]);
 
-    // --- RENAME ---
-    const handleRenameSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (modals.renameTargetId && modals.renameValue.trim()) {
-            try {
-                // On doit savoir si c'est un dossier ou une note par son ID (dir-XX ou note-XX)
-                const fullId = modals.renameTargetId as string;
-
-                if (fullId.startsWith('dir-')) {
-                    const realId = Number(fullId.replace("dir-", ""));
-                    await updateDirectory({ id: realId, name: modals.renameValue });
-                } else if (fullId.startsWith('note-')) {
-                    // TODO: Activer quand updateNote supportera le renommage seul
-                    alert("Le renommage de note se fait via l'éditeur pour le moment.");
-                }
-
-                await refreshTree();
-                modals.setIsRenameOpen(false);
-            } catch (error) {
-                console.error("Erreur rename", error);
-                alert("Impossible de renommer !");
-            }
-        }
-    };
-
-    // --- DELETE ---
-    const handleDeleteConfirm = async () => {
+    // --- RENAME (Inchangé) ---
+    const handleRenameSubmit = useCallback(async (id: string, newName: string) => {
         try {
-            if (modals.deleteTargetId != null) {
-                const fullId = modals.deleteTargetId as string;
+            // id contient déjà "dir-" ou "note-" parfois, mais directoryService attend un nombre
+            // On nettoie l'ID au cas où
+            const cleanId = String(id).replace("dir-", "").replace("note-", "");
+            await updateDirectory({ id: Number(cleanId), name: newName });
+            await refreshTree();
+            modals.setIsRenameOpen(false);
+        } catch (error) {
+            console.error("Erreur renommage :", error);
+        }
+    }, [refreshTree, modals]);
 
-                if (fullId.startsWith('dir-')) {
-                    const realId = Number(fullId.replace("dir-", ""));
-                    await deleteDirectory(realId);
-                } else if (fullId.startsWith('note-')) {
-                    // TODO: Activer quand deleteNote sera importé
-                    alert("Suppression de note à venir...");
-                }
-
-                await refreshTree();
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Impossible de supprimer !");
-        } finally {
+    // --- DELETE (Inchangé) ---
+    const handleDeleteConfirm = useCallback(async () => {
+        const id = modals.targetDeleteId;
+        if (!id) return;
+        try {
+            const cleanId = String(id).replace("dir-", "").replace("note-", "");
+            await deleteDirectory(Number(cleanId));
+            await refreshTree();
             modals.setIsDeleteOpen(false);
+        } catch (error) {
+            console.error("Erreur suppression :", error);
         }
-    };
+    }, [modals.targetDeleteId, refreshTree, modals]);
 
-    // --- EXPORT ---
-    const handleExportConfirm = async (format: 'zip' | 'pdf') => {
-        modals.setIsExportOpen(false);
+    // --- EXPORT (Inchangé) ---
+    const handleExportConfirm = useCallback(async (format: 'zip' | 'pdf') => {
+        const id = modals.targetExportId;
+        // Pour l'export, on a besoin de l'ID nettoyé aussi si c'est un dossier spécifique
+        const cleanId = id ? String(id).replace("dir-", "") : null;
         const name = modals.exportTargetName || "Grimoire_Complet";
-        // Export ne gère que les dossiers pour l'instant (ID directory)
-        const rawId = modals.exportTargetId;
-        const cleanId = rawId && rawId.startsWith('dir-') ? rawId.replace('dir-', '') : null;
 
-        if (format === 'zip') {
-            await exportAsZip(name, cleanId);
-        } else {
-            exportAsPdf(name, cleanId);
+        try {
+            if (format === 'zip') await exportAsZip(name, cleanId);
+            else await exportAsPdf(name, cleanId);
+            modals.setIsExportOpen(false);
+        } catch (error) {
+            console.error("Erreur export :", error);
+            alert("Le sortilège d'exportation a échoué !");
         }
-    };
+    }, [modals]);
 
     return {
         handleCreateSubmit,

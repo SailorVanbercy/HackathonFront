@@ -2,48 +2,78 @@ import { useState } from "react";
 
 export type CreationType = 'directory' | 'note';
 
-export const useSidebarModals = () => {
+// Interface exposée pour useSidebarActions
+export interface UseSidebarModalsType {
+    isCreateOpen: boolean;
+    setIsCreateOpen: (v: boolean) => void;
+    newFolderName: string;
+    setNewFolderName: (v: string) => void;
+    targetParentId: number | null;
+    setTargetParentId: (v: number | null) => void;
+    creationType: CreationType;
+    openCreateModal: (type: CreationType, parentId?: number | null) => void;
+
+    isRenameOpen: boolean;
+    setIsRenameOpen: (v: boolean) => void;
+    renameValue: string;
+    setRenameValue: (v: string) => void;
+    targetRenameId: string | null;
+    openRenameModal: (id: string, currentName: string) => void;
+
+    isDeleteOpen: boolean;
+    setIsDeleteOpen: (v: boolean) => void;
+    targetDeleteId: string | null;
+    openDeleteModal: (id: string) => void;
+
+    isExportOpen: boolean;
+    setIsExportOpen: (v: boolean) => void;
+    targetExportId: string | null;
+    exportTargetName: string | undefined;
+    openExportModal: (id: string | null, name?: string) => void;
+}
+
+export const useSidebarModals = (): UseSidebarModalsType => {
+
     // --- CREATE ---
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
-    const [targetParentId, setTargetParentId] = useState<string>("root");
-    // NOUVEAU : Savoir si on crée un dossier ou une note
+    const [targetParentId, setTargetParentId] = useState<number | null>(null);
     const [creationType, setCreationType] = useState<CreationType>('directory');
 
-    const openCreateModal = (type: CreationType, parentId: string | null = null) => {
+    const openCreateModal = (type: CreationType, parentId: number | null = null) => {
         setCreationType(type);
         setNewFolderName("");
-        setTargetParentId(parentId || "root");
+        setTargetParentId(parentId);
         setIsCreateOpen(true);
     };
 
     // --- RENAME ---
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState("");
-    const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+    const [targetRenameId, setTargetRenameId] = useState<string | null>(null);
 
     const openRenameModal = (id: string, currentName: string) => {
-        setRenameTargetId(id);
+        setTargetRenameId(id);
         setRenameValue(currentName);
         setIsRenameOpen(true);
     };
 
     // --- DELETE ---
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+    const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
 
     const openDeleteModal = (id: string) => {
-        setDeleteTargetId(id);
+        setTargetDeleteId(id);
         setIsDeleteOpen(true);
     };
 
     // --- EXPORT ---
     const [isExportOpen, setIsExportOpen] = useState(false);
-    const [exportTargetId, setExportTargetId] = useState<string | null>(null);
+    const [targetExportId, setTargetExportId] = useState<string | null>(null);
     const [exportTargetName, setExportTargetName] = useState<string | undefined>(undefined);
 
     const openExportModal = (id: string | null, name?: string) => {
-        setExportTargetId(id);
+        setTargetExportId(id);
         setExportTargetName(name);
         setIsExportOpen(true);
     };
@@ -53,23 +83,23 @@ export const useSidebarModals = () => {
         isCreateOpen, setIsCreateOpen,
         newFolderName, setNewFolderName,
         targetParentId, setTargetParentId,
-        creationType, setCreationType, // On expose ces nouveaux champs
+        creationType,
         openCreateModal,
 
         // Rename
         isRenameOpen, setIsRenameOpen,
         renameValue, setRenameValue,
-        renameTargetId,
+        targetRenameId,
         openRenameModal,
 
         // Delete
         isDeleteOpen, setIsDeleteOpen,
-        deleteTargetId,
+        targetDeleteId,
         openDeleteModal,
 
         // Export
         isExportOpen, setIsExportOpen,
-        exportTargetId,
+        targetExportId,
         exportTargetName,
         openExportModal
     };
