@@ -16,7 +16,7 @@ import { CreateFolderModal, RenameModal, DeleteModal, ExportModal } from "./Side
 
 // --- HOOKS ---
 import { useSidebarTree } from "./hooks/useSidebarTree";
-import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals"; // Import CreationType
+import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 
 export interface SidebarHandle {
@@ -24,11 +24,17 @@ export interface SidebarHandle {
     openExportModal: () => void;
 }
 
+// Nouvelle interface pour les props reçues par la Sidebar
+interface SidebarProps {
+    onRefresh?: () => void;
+}
+
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
-const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
+// Modification ici : on remplace 'object' par 'SidebarProps' et '_' par 'props'
+const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     // 1. Initialisation des Hooks
     const tree = useSidebarTree();
@@ -51,11 +57,8 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
     // 3. Handlers UI
     const toggleCollapse = () => setIsCollapsed(s => !s);
 
-    // On passe le type (directory/note) au context menu pour savoir quoi afficher
     const handleContextMenu = (e: React.MouseEvent, id: string, type: 'directory' | 'note') => {
         e.preventDefault();
-        // On peut stocker le type dans l'état si on veut filtrer les options du menu
-        // Pour l'instant on ouvre juste le menu
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id });
     };
 
@@ -78,10 +81,20 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
-    // Gestion unifiée de la création (Dossier ou Note)
     const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
         modals.openCreateModal(type, parentId);
         setContextMenu(p => ({ ...p, targetId: null }));
+    };
+
+    // --- WRAPPER POUR INTERCEPTER LA CRÉATION ET REFRESH LA HOME ---
+    const handleCreateSubmitWrapper = async (name: string, parentId: number | null, type: CreationType) => {
+        // 1. Création effective (API + Arbre)
+        await actions.handleCreateSubmit(name, parentId, type);
+
+        // 2. Notification au parent (HomePage) pour rafraîchir les notes récentes
+        if (props.onRefresh) {
+            props.onRefresh();
+        }
     };
 
     // 4. Exposition au parent
@@ -136,10 +149,9 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
                             search={tree.search}
                             setSearch={tree.setSearch}
                             isCollapsed={isCollapsed}
-                            onOpenCreate={() => handleOpenCreate(null, 'directory')} // Par défaut bouton header = Nouveau Dossier
+                            onOpenCreate={() => handleOpenCreate(null, 'directory')}
                         />
 
-                        {/* Bouton rapide pour créer une Note à la racine (optionnel mais pratique) */}
                         <div style={{ padding: '0 10px 10px 10px' }}>
                             <button
                                 onClick={() => handleOpenCreate(null, 'note')}
@@ -191,24 +203,22 @@ const Sidebar = forwardRef<SidebarHandle, object>((_, ref) => {
                 onExport={handleOpenExport}
                 // @ts-expect-error - onNewFolder gère maintenant le type
                 onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')}
-                // Tu devras ajouter une prop onNewNote dans ContextMenu.tsx si tu veux le clic droit "Nouvelle Note"
-                // ou ruser en passant une fonction custom ici
             />
 
             {/* Modales */}
             <CreateFolderModal
                 isOpen={modals.isCreateOpen}
                 onClose={() => modals.setIsCreateOpen(false)}
-                onSubmit={actions.handleCreateSubmit}
+                onSubmit={handleCreateSubmitWrapper} // <--- Utilisation du wrapper ici
                 folderName={modals.newFolderName}
                 setFolderName={modals.setNewFolderName}
                 parentId={modals.targetParentId}
                 setParentId={modals.setTargetParentId}
                 treeData={tree.treeData}
-                // @ts-expect-error - On peut ajouter une prop 'title' ou 'type' à CreateFolderModal pour changer le texte
+                // @ts-expect-error - On peut ajouter une prop 'title' ou 'type' à CreateFolderModal
                 creationType={modals.creationType}
             />
-            {/* ... Autres modales inchangées ... */}
+
             <RenameModal
                 isOpen={modals.isRenameOpen}
                 onClose={() => modals.setIsRenameOpen(false)}

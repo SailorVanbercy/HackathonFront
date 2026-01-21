@@ -1,9 +1,10 @@
-// src/context/AuthContext.tsx
+// src/features/context/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import type {UserResponse, LoginRequest} from "../../shared/DTO/users/users";
-import {login as loginService, getCurrentUser, logout as logoutService} from "../services/auth/authservice";
-import {useNavigate} from "react-router";
+import type { UserResponse, LoginRequest } from "../../shared/DTO/users/users";
+import { login as loginService, getCurrentUser, logout as logoutService } from "../services/auth/authservice";
+import { useNavigate } from "react-router";
 
+// 1. L'interface doit refléter la réalité : l'user PEUT être null (déconnecté)
 interface AuthContextType {
     user: UserResponse | null;
     login: (data: LoginRequest) => Promise<void>;
@@ -13,19 +14,19 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     let navigate = useNavigate();
-    // Au chargement de l'app, on vérifie si un cookie existe déjà
+
     useEffect(() => {
         const checkAuth = async () => {
             try {
                 const userData = await getCurrentUser();
                 setUser(userData);
             } catch (e) {
-                // Pas connecté, ce n'est pas grave
-                console.error(e);
+                console.error("Non connecté", e);
                 setUser(null);
             } finally {
                 setIsLoading(false);
@@ -35,35 +36,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const login = async (data: LoginRequest) => {
-        // 1. On fait le login (le cookie est posé)
         await loginService(data);
-        // 2. On récupère immédiatement les infos de l'utilisateur
         const userData = await getCurrentUser();
         setUser(userData);
     };
 
     const logout = async () => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
         try {
             await logoutService();
-        }catch (e) {
+        } catch (e) {
             console.error(e);
-        }finally {
+        } finally {
             setUser(null);
             navigate('/login');
         }
-    }
+    };
 
     return (
-        <AuthContext.Provider value={{ user, login,logout, isAuthenticated: !!user, isLoading }}>
+        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+// Hook de base (peut renvoyer null)
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) throw new Error("useAuth must be used within an AuthProvider");
     return context;
+};
+
+// 2. NOUVEAU HOOK : useUser
+// À utiliser UNIQUEMENT dans les composants protégés (comme HomePage).
+// Il renvoie 'UserResponse' sans null, ce qui facilite le transfert.
+export const useUser = (): UserResponse => {
+    const { user } = useAuth();
+    if (!user) {
+        throw new Error("useUser a été appelé sans utilisateur connecté !");
+    }
+    return user;
 };

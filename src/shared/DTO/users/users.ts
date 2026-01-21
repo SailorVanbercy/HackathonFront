@@ -11,8 +11,8 @@ export interface RegisterRequest{
 
 export interface UserResponse{
     id : number;
-    firstName:string;
-    lastName:string;
+    firstname:string;
+    lastname:string;
     email:string;
     createdAt : Date;
 }
