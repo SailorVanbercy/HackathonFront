@@ -1,61 +1,107 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import TurndownService from "turndown"; // <--- 1. IMPORT DU CONVERTISSEUR
-import { useNavigate } from "react-router";
+import Link from "@tiptap/extension-link";
+import TurndownService from "turndown";
+import { marked } from "marked";
+import { useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
 import "./NoteDetails.css";
 
-const NoteDetails = () => {
-  const navigate = useNavigate();
+// IMPORT DU SERVICE (Ajustez le chemin selon votre structure)
+import { getNoteById, updateNote } from "../services/notes/noteService";
 
-  // Configuration de Tiptap (Plus simple, plus d'extension markdown ici)
+const NoteDetails = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [title, setTitle] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Configuration Tiptap
   const editor = useEditor({
-    extensions: [StarterKit],
-    content: `
-      <h1>Le Grimoire des Ombres</h1>
-      <p>Bienvenue, sorcier. Ce parchemin est magique :</p>
-      <ul>
-        <li>Tapez <code># </code> pour un grand titre</li>
-        <li>Tapez <code>- </code> pour une liste</li>
-        <li>Tapez <code>> </code> pour une citation mystique</li>
-      </ul>
-      <p>Essayez d'écrire ci-dessous...</p>
-    `,
-    editorProps: {
-      attributes: {
-        class: "tiptap-content",
-      },
-    },
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: false, autolink: true }),
+    ],
+    content: "",
+    editorProps: { attributes: { class: "tiptap-content" } },
   });
 
-  const handleLogContent = () => {
+  // --- 1. CHARGEMENT VIA LE SERVICE ---
+  useEffect(() => {
+    if (!id || !editor) return;
+
+    const loadData = async () => {
+      try {
+        // Appel au service (conversion de l'ID en nombre)
+        const note = await getNoteById(Number(id));
+
+        setTitle(note.name);
+
+        // Conversion du Markdown (BDD) vers HTML (Éditeur)
+        const htmlContent = note.content ? marked.parse(note.content) : "";
+
+        // Mise à jour de l'éditeur sans bloquer le rendu
+        setTimeout(() => {
+          if (editor && !editor.isDestroyed) {
+            editor.commands.setContent(htmlContent);
+          }
+        }, 0);
+      } catch (error) {
+        console.error("Erreur chargement:", error);
+        alert("Impossible de lire ce parchemin...");
+        navigate("/home");
+      }
+    };
+
+    loadData();
+  }, [id, editor, navigate]);
+
+  // Gestion des liens (inchangé)
+  const setLink = useCallback(() => {
     if (!editor) return;
+    const previousUrl = editor.getAttributes("link").href;
+    const url = window.prompt("URL du lien magique :", previousUrl);
 
-    // 1. Récupérer le HTML (Ça marche toujours)
+    if (url === null) return;
+    if (url === "") {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }, [editor]);
+
+  // --- 2. SAUVEGARDE VIA LE SERVICE ---
+  const handleSaveContent = async () => {
+    if (!editor) return;
+    setIsSaving(true);
+
+    // Conversion HTML (Éditeur) vers Markdown (BDD)
     const html = editor.getHTML();
-
-    // 2. Convertir le HTML en Markdown via Turndown
     const turndownService = new TurndownService({
-      headingStyle: "atx", // Force les titres avec des # au lieu de soulignés
-      codeBlockStyle: "fenced", // Utilise ``` pour le code
+      headingStyle: "atx",
+      codeBlockStyle: "fenced",
     });
-
     const markdown = turndownService.turndown(html);
 
-    console.group("🔮 Contenu Capturé");
-    console.log("%c HTML (Pour le site) :", "color: orange;", html);
-    console.log(
-      "%c MARKDOWN (Pour la BDD) :",
-      "color: cyan; font-weight: bold;",
-      markdown,
-    );
-    console.groupEnd();
+    try {
+      // Appel au service updateNote
+      await updateNote(Number(id), {
+        name: title,
+        content: markdown,
+      });
 
-    alert("Incantation capturée ! Vérifiez la console (F12).");
+      console.log("Sauvegarde réussie");
+      // Optionnel : Ajouter un petit feedback visuel temporaire (Toast)
+      alert("📜 Sortilège inscrit dans le marbre !");
+    } catch (error) {
+      console.error("Erreur sauvegarde:", error);
+      //alert(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
   return (
     <div className="grim-container">
@@ -64,27 +110,38 @@ const NoteDetails = () => {
           ⬅ Retour
         </button>
 
+        <input
+          type="text"
+          className="grim-title-input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Titre du Sortilège..."
+        />
+
         <div className="grim-toolbar">
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`tool-btn ${editor.isActive("bold") ? "active" : ""}`}
-            title="Gras"
           >
             B
           </button>
           <button
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`tool-btn ${editor.isActive("italic") ? "active" : ""}`}
-            title="Italique"
           >
             I
+          </button>
+          <button
+            onClick={setLink}
+            className={`tool-btn ${editor.isActive("link") ? "active" : ""}`}
+          >
+            🔗
           </button>
           <button
             onClick={() =>
               editor.chain().focus().toggleHeading({ level: 1 }).run()
             }
             className={`tool-btn ${editor.isActive("heading", { level: 1 }) ? "active" : ""}`}
-            title="Titre H1"
           >
             H1
           </button>
@@ -93,14 +150,17 @@ const NoteDetails = () => {
               editor.chain().focus().toggleHeading({ level: 2 }).run()
             }
             className={`tool-btn ${editor.isActive("heading", { level: 2 }) ? "active" : ""}`}
-            title="Titre H2"
           >
             H2
           </button>
         </div>
 
-        <button onClick={handleLogContent} className="grim-btn save-btn">
-          📜 Capturer le Sort
+        <button
+          onClick={handleSaveContent}
+          className="grim-btn save-btn"
+          disabled={isSaving}
+        >
+          {isSaving ? "⏳..." : "📜 Sauvegarder"}
         </button>
       </div>
 

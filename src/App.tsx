@@ -93,6 +93,7 @@ function App() {
           <Route path={"/home"} element={<HomePage />} />
           <Route path={"/"} element={<LoginPage />}></Route>
           <Route path="/note" element={<NoteDetails />}></Route>
+          <Route path="/note/:id" element={<NoteDetails />}></Route>
         </Route>
       </Routes>
 
