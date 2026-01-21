@@ -5,6 +5,7 @@ import { getAllNotes, type NoteTreeItemDTO } from '../../services/notes/noteServ
 import { Ghost } from "../../components/Ghost/Ghost";
 import { Bats } from "../../components/Bats/Bats";
 import './HomePage.css';
+import {useNavigate} from "react-router";
 
 interface NoteDisplay extends NoteTreeItemDTO {
     updatedAt?: string;
@@ -12,6 +13,7 @@ interface NoteDisplay extends NoteTreeItemDTO {
 }
 
 export const HomePage = () => {
+    const navigate = useNavigate();
     const sidebarRef = useRef<SidebarHandle>(null);
     const user = useUser();
     const { logout } = useAuth();
@@ -119,7 +121,7 @@ export const HomePage = () => {
                             {recentNotes.map((note) => {
                                 const { label, icon } = getRecencyLabel(note);
                                 return (
-                                    <div key={note.id} className="spooky-card">
+                                    <div key={note.id} className="spooky-card" onClick={() => navigate(`/note/${note.id}`)}>
                                         <div className="card-header">
                                             <span>{label}</span>
                                             <span>{icon}</span>
