@@ -230,21 +230,56 @@
 
 /* Le fond obscurci et flou */
 .modal-overlay {
+    /* CRUCIAL : !important force la sortie du flux pour ne RIEN décaler */
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* On centre, mais on s'assure que ça déborde visiblement */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Le fond reste contenu dans la sidebar */
     background: rgba(10, 5, 15, 0.85);
     backdrop-filter: blur(5px);
-    z-index: 1000;
+
+    /* Z-index élevé pour passer au-dessus de l'arbre mais sous le bouton citrouille (si voulu) */
+    z-index: 50;
+    border-radius: inherit;
+
+    /* IMPORTANT : Permet au contenu enfant de dépasser visuellement de cet overlay */
+    overflow: visible !important;
 }
 
 /* La boîte de la modale */
 .modal-content {
+    /* Style visuel */
     background: linear-gradient(145deg, #1e1b2e 0%, #151020 100%);
     border: 1px solid #4c3a6e;
     box-shadow: 0 0 25px rgba(139, 92, 246, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     border-radius: 16px;
     padding: 2rem;
+
+    /* TAILLE & DÉBORDEMENT */
+    /* On garde une largeur relative à la sidebar... */
     width: 90%;
+    /* ...MAIS on impose une largeur mini qui forcera le dépassement (pop-out) */
+    min-width: 320px;
     max-width: 450px;
+
     color: #e2e8f0;
+    position: relative; /* Pour que le z-index fonctionne si besoin */
+
+    /* Animation d'entrée pour l'effet "Pop" */
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.9) translateX(-10px); }
+    to { opacity: 1; transform: scale(1) translateX(0); }
 }
 
 .modal-title {
