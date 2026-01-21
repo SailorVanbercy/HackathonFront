@@ -31,6 +31,7 @@ export const useSidebarTree = (searchQuery: string = "") => {
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(true);
         refreshTree().finally(() => setIsLoading(false));
     }, [refreshTree]);
