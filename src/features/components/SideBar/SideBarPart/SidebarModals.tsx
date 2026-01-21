@@ -1,47 +1,36 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
-import type { DirectoryDTO } from "../../../services/directories/directoryService";
 
 // --- HOOK UTILITAIRE (Inchangé) ---
 const useModalShortcut = (isOpen: boolean, onClose: () => void, onConfirm?: () => void) => {
     useEffect(() => {
-        // Si la modale est fermée, on ne fait rien
         if (!isOpen) return;
-
         const handleKeyDown = (e: KeyboardEvent) => {
-            // ECHAP : On ferme toujours
             if (e.key === "Escape" || e.key === "Esc") {
-                // On évite preventDefault sur Echap car ça peut bloquer la sortie de plein écran navigateur
                 onClose();
             }
-            // ENTER : On confirme si une action est fournie
             if (e.key === "Enter" && onConfirm) {
-                e.preventDefault(); // Empêche le saut de ligne ou submit classique
+                e.preventDefault();
                 onConfirm();
             }
         };
-
-        // On écoute sur document plutôt que window pour être plus sûr dans le DOM React
         document.addEventListener("keydown", handleKeyDown);
-
-        // Nettoyage
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [isOpen, onClose, onConfirm]);
 };
 
-// --- PROPS (Inchangées) ---
 interface CreateFolderModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (name: string, parentId: number | null) => void;
-    directories: DirectoryDTO[];
+    targetParentId: number | null; // On passe l'ID directement
 }
 
 interface CreateNoteModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (name: string, directoryId: number) => void;
-    directories: DirectoryDTO[];
+    targetDirectoryId: number | null; // On passe l'ID directement
 }
 
 interface CommonModalProps {
@@ -71,33 +60,24 @@ const modalVariants: Variants = {
     },
 };
 
-// --- MODALE DOSSIER (CORRIGÉE POUR ANIMATION DE SORTIE) ---
+// --- MODALE DOSSIER (Simplifiée) ---
 export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
-                                                                        isOpen, onClose, onSubmit, directories
+                                                                        isOpen, onClose, onSubmit, targetParentId
                                                                     }) => {
     const [name, setName] = useState("");
-    const [selectedParentId, setSelectedParentId] = useState<string>("");
-
-    const rootDir = directories.find(d => d.name.toLowerCase() === "root");
-    const visibleDirs = directories.filter(d => d.name.toLowerCase() !== "root");
-
-    const activeParentId = selectedParentId !== "" ? selectedParentId : (rootDir ? rootDir.id.toString() : "");
 
     const handleSubmit = () => {
         if (!name.trim()) return;
-        const parentIdNumber = activeParentId ? parseInt(activeParentId, 10) : null;
-        onSubmit(name, parentIdNumber);
+        // On utilise directement le targetParentId fourni par le contexte
+        onSubmit(name, targetParentId);
         setName("");
         onClose();
     };
 
     useModalShortcut(isOpen, onClose, name.trim() ? handleSubmit : undefined);
 
-    // SUPPRIMÉ ICI : if (!isOpen) return null;
-
     return (
         <AnimatePresence>
-            {/* AJOUTÉ ICI : La condition est déplacée à l'intérieur */}
             {isOpen && (
                 <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
                     <motion.div className="modal-content" variants={modalVariants}>
@@ -105,15 +85,9 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                         <div className="modal-body">
                             <div>
                                 <label className="modal-label">Nom du dossier</label>
-                                <input autoFocus className="magic-input" placeholder="Ex: Sortilèges" value={name} onChange={e => setName(e.target.value)} />
+                                <input autoFocus className="magic-input" placeholder="Ex: Sortilèges Interdits" value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            <div>
-                                <label className="modal-label">Emplacement</label>
-                                <select className="magic-select" value={activeParentId} onChange={e => setSelectedParentId(e.target.value)}>
-                                    {rootDir && <option value={rootDir.id}>Racine</option>}
-                                    {visibleDirs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
+                            {/* Suppression du Select : L'emplacement est défini par le clic droit */}
                         </div>
                         <div className="modal-actions">
                             <button className="btn-ghost" onClick={onClose}>Annuler</button>
@@ -126,38 +100,25 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     );
 };
 
-// --- MODALE NOTE (CORRIGÉE POUR ANIMATION DE SORTIE) ---
+// --- MODALE NOTE (Simplifiée) ---
 export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
-                                                                    isOpen, onClose, onSubmit, directories
+                                                                    isOpen, onClose, onSubmit, targetDirectoryId
                                                                 }) => {
     const [name, setName] = useState("");
-    const [userSelectedDirId, setUserSelectedDirId] = useState<string | null>(null);
-
-    const rootDir = directories.find(d => d.name.toLowerCase() === "root");
-    const otherDirs = directories.filter(d => d.name.toLowerCase() !== "root");
-
-    const defaultDirId = rootDir
-        ? rootDir.id.toString()
-        : (directories.length > 0 ? directories[0].id.toString() : "");
-
-    const activeDirId = userSelectedDirId !== null ? userSelectedDirId : defaultDirId;
 
     const handleSubmit = () => {
         if (!name.trim()) return;
-        const dirIdNumber = activeDirId ? parseInt(activeDirId, 10) : 0;
-        onSubmit(name, dirIdNumber);
+        // targetDirectoryId peut être null (racine) ou un nombre. Le service gère le 0/null.
+        const dirId = targetDirectoryId || 0;
+        onSubmit(name, dirId);
         setName("");
-        setUserSelectedDirId(null);
         onClose();
     };
 
     useModalShortcut(isOpen, onClose, name.trim() ? handleSubmit : undefined);
 
-    // SUPPRIMÉ ICI : if (!isOpen) return null;
-
     return (
         <AnimatePresence>
-            {/* AJOUTÉ ICI : La condition est déplacée à l'intérieur */}
             {isOpen && (
                 <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
                     <motion.div className="modal-content" variants={modalVariants}>
@@ -165,15 +126,9 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
                         <div className="modal-body">
                             <div>
                                 <label className="modal-label">Titre</label>
-                                <input autoFocus className="magic-input" placeholder="Titre..." value={name} onChange={e => setName(e.target.value)} />
+                                <input autoFocus className="magic-input" placeholder="Titre du sort..." value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            <div>
-                                <label className="modal-label">Grimoire</label>
-                                <select className="magic-select" value={activeDirId} onChange={e => setUserSelectedDirId(e.target.value)}>
-                                    {rootDir && <option value={rootDir.id}>Racine</option>}
-                                    {otherDirs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
+                            {/* Suppression du Select */}
                         </div>
                         <div className="modal-actions">
                             <button className="btn-ghost" onClick={onClose}>Annuler</button>
@@ -186,12 +141,10 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
     );
 };
 
-// --- MODALE RENAME (Déjà correcte) ---
+// --- AUTRES MODALES (Inchangées - juste exportées) ---
 interface RenameModalProps extends CommonModalProps { onSubmit: (id: string, name: string) => void; value: string; setValue: (v: string) => void; }
 export const RenameModal: React.FC<RenameModalProps> = ({ isOpen, onClose, onSubmit, value, setValue }) => {
-
     useModalShortcut(isOpen, onClose, () => onSubmit("", value));
-
     return (
         <AnimatePresence>
             {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
@@ -208,12 +161,9 @@ export const RenameModal: React.FC<RenameModalProps> = ({ isOpen, onClose, onSub
     );
 };
 
-// --- MODALE DELETE (Déjà correcte) ---
 interface DeleteModalProps extends CommonModalProps { onConfirm: () => void; }
 export const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, onConfirm }) => {
-
     useModalShortcut(isOpen, onClose, onConfirm);
-
     return (
         <AnimatePresence>
             {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
@@ -230,12 +180,9 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, onCon
     );
 };
 
-// --- MODALE EXPORT (Déjà correcte) ---
 interface ExportModalProps extends CommonModalProps { onConfirm: (f: 'zip' | 'pdf' | 'md') => void; folderName?: string; itemType: 'directory' | 'note'; }
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, folderName, itemType }) => {
-
     useModalShortcut(isOpen, onClose);
-
     return (
         <AnimatePresence>
             {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>

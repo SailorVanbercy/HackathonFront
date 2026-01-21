@@ -1,5 +1,6 @@
 import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { motion } from "framer-motion";
+import { GiMagicSwirl } from "react-icons/gi"; // Icône pour le bouton racine
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
@@ -50,16 +51,29 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     const toggleCollapse = () => setIsCollapsed(s => !s);
 
-    const handleContextMenu = (e: React.MouseEvent, id: string, type: 'directory' | 'note') => {
+    const handleContextMenu = (e: React.MouseEvent, id: string | null, type: 'directory' | 'note') => {
         e.preventDefault();
+        e.stopPropagation(); // Important pour éviter les conflits
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id, targetType: type });
+    };
+
+    // Handler spécifique pour le bouton racine : ouvre le menu contextuel "Root"
+    const handleRootInvocation = (e: React.MouseEvent) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        // On positionne le menu juste en dessous du bouton
+        setContextMenu({
+            x: rect.left,
+            y: rect.bottom + 5,
+            targetId: null, // null signifie "Root"
+            targetType: 'directory' // On le traite comme un dossier pour avoir l'option Invocation
+        });
     };
 
     const handleOpenRename = (id: string) => {
         const node = tree.allNodes.find((n) => n.id === id);
         if (node) {
             modals.openRenameModal(id, node.name);
-            setContextMenu(p => ({ ...p, targetId: null }));
+            setContextMenu(p => ({ ...p, targetId: null })); // Ferme le menu
         }
     };
 
@@ -75,6 +89,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         setContextMenu(p => ({ ...p, targetId: null }));
     };
 
+    // Modifié : accepte directement l'ID (string "dir-123" ou null)
     const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
         let numParentId: number | null = null;
         if (parentId) {
@@ -110,6 +125,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         };
     }, []);
 
+    // @ts-ignore
     return (
         <>
             <aside ref={sidebarRef} className={`sidebar ${isCollapsed ? "collapsed" : ""}`} style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}>
@@ -120,17 +136,42 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 {!isCollapsed && (
                     <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
 
-                        {/* Le SidebarHeader contient maintenant le petit bouton Home et la Recherche */}
                         <SidebarHeader
                             search={search}
                             setSearch={setSearch}
                             isCollapsed={isCollapsed}
-                            onOpenCreate={() => handleOpenCreate(null, 'directory')}
                         />
 
+                        {/* Nouveau Bouton "Racine" unique */}
                         <div style={{ padding: '0 10px 10px 10px' }}>
-                            <button onClick={() => handleOpenCreate(null, 'note')} style={{ width: '100%', padding: '6px', background: '#2a0a2e', border: '1px dashed #bfaFbF', color: '#bfaFbF', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                + Nouvelle Page
+                            <button
+                                onClick={handleRootInvocation}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    background: 'linear-gradient(45deg, #2a0a2e, #1a001a)',
+                                    border: '1px solid #ff8c00',
+                                    color: '#ffcc99',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    boxShadow: '0 0 5px rgba(255, 140, 0, 0.2)',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.boxShadow = '0 0 10px rgba(255, 140, 0, 0.4)';
+                                    e.currentTarget.style.borderColor = '#ffaa00';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.boxShadow = '0 0 5px rgba(255, 140, 0, 0.2)';
+                                    e.currentTarget.style.borderColor = '#ff8c00';
+                                }}
+                            >
+                                <GiMagicSwirl /> Invocation (Racine)
                             </button>
                         </div>
 
@@ -157,11 +198,12 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 y={contextMenu.y}
                 targetId={contextMenu.targetId}
                 targetType={contextMenu.targetType}
-                onClose={() => setContextMenu(p => ({ ...p, targetId: null }))}
+                onClose={() => setContextMenu(p => ({ ...p, targetId: undefined }))} // Undefined ou null pour fermer
                 onRename={handleOpenRename}
                 onDelete={handleOpenDelete}
                 onExport={handleOpenExport}
-                onNewFolder={(parentId: string | null) => handleOpenCreate(parentId, 'directory')}
+                onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')}
+                onNewNote={(parentId) => handleOpenCreate(parentId, 'note')}
             />
 
             {modals.isCreateOpen && modals.creationType === 'directory' && (
@@ -169,7 +211,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                     isOpen={modals.isCreateOpen}
                     onClose={() => modals.setIsCreateOpen(false)}
                     onSubmit={actions.handleCreateFolder}
-                    directories={tree.directories}
+                    targetParentId={modals.targetParentId}
                 />
             )}
 
@@ -178,7 +220,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                     isOpen={modals.isCreateOpen}
                     onClose={() => modals.setIsCreateOpen(false)}
                     onSubmit={actions.handleCreateNote}
-                    directories={tree.directories}
+                    targetDirectoryId={modals.targetParentId}
                 />
             )}
 
