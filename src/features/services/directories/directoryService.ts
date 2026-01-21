@@ -58,7 +58,7 @@ export const deleteDirectory = async (id : number) : Promise<void> => {
 }
 
 export const updateDirectory = async (req : UpdateDirectoryDTO) : Promise<void> => {
-    const response = await fetch(API_URL, {
+    await fetch(API_URL, {
             method: 'PUT',
             headers: {
                 "Content-Type": "application/json"
