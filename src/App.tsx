@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 import LoginPage from "./features/layout/login/LoginPage.tsx";
-import { Route, Routes } from "react-router";
+import {Route, Routes} from "react-router";
 import RegisterPage from "./features/layout/register/RegisterPage.tsx";
 import HomePage from "./features/layout/home/HomePage.tsx";
 import Footer from "./features/components/Footer/Footer.tsx";
 import { GiTorch } from "react-icons/gi";
 import NoteDetails from "./features/components/NoteDetails.tsx";
-import { RequireAuth } from "./shared/utils/RequireAuth.tsx";
+import {RequireAuth} from "./shared/utils/RequireAuth.tsx";
 
 function App() {
   // --- États pour la Torche ---
