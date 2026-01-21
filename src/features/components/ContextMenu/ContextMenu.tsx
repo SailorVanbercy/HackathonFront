@@ -11,7 +11,6 @@ interface ContextMenuProps {
     onRename: (id: string) => void;
     onDelete: (id: string) => void;
     onExport: (id: string) => void;
-    // Nouveaux props pour la création
     onNewFolder: (parentId: string | null) => void;
     onNewNote: (parentId: string | null) => void;
 }
@@ -42,7 +41,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [onClose]);
 
-    // Note : On autorise targetId === null pour le cas "Root"
+    // targetId === undefined est géré par le parent (non-rendu), mais on garde une sécu ici
     if (targetId === undefined) return null;
 
     // Détermine si on est sur un dossier (ou racine) pour afficher l'invocation
@@ -71,7 +70,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     minWidth: '160px'
                 }}
             >
-                {/* INVOCATION (Nouveau) - Uniquement pour dossiers/root */}
+                {/* INVOCATION - Uniquement pour dossiers/root */}
                 {isDirectoryOrRoot && (
                     <div
                         style={{ position: 'relative' }}
@@ -83,57 +82,68 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                         }}
                     >
                         <MenuButton
-                            onClick={() => {}} // Géré par le hover/click wrapper
+                            onClick={() => {}}
                             icon={<GiMagicSwirl />}
-                            label="Invocation ➤"
+                            label="Invocation"
                         />
                         {/* Sous-menu */}
-                        {showInvocationSub && (
-                            <motion.div
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                style={{
-                                    position: 'absolute',
-                                    left: '100%',
-                                    top: 0,
-                                    background: '#2a0a2e',
-                                    border: '1px solid #ff8c00',
-                                    borderRadius: '8px',
-                                    padding: '0.5rem',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '4px',
-                                    minWidth: '150px',
-                                    boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-                                    marginLeft: '5px'
-                                }}
-                            >
-                                <MenuButton
-                                    onClick={() => { onNewFolder(targetId); onClose(); }}
-                                    icon={<GiSpellBook />}
-                                    label="Nouveau Grimoire"
-                                />
-                                <MenuButton
-                                    onClick={() => { onNewNote(targetId); onClose(); }}
-                                    icon={<GiScrollUnfurled />}
-                                    label="Nouveau Parchemin"
-                                />
-                            </motion.div>
-                        )}
+                        <AnimatePresence>
+                            {showInvocationSub && (
+                                // CORRECTION : Conteneur "Pont" invisible pour éviter le trou (gap)
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '100%',
+                                        top: '-10px', // Léger décalage haut pour facilité
+                                        height: '140%', // Zone plus large pour attraper la souris
+                                        paddingLeft: '6px', // Le pont invisible !
+                                        display: 'flex',
+                                        alignItems: 'center', // Centre verticalement par rapport au bouton parent
+                                        zIndex: 10
+                                    }}
+                                >
+                                    <motion.div
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        style={{
+                                            background: '#2a0a2e',
+                                            border: '1px solid #ff8c00',
+                                            borderRadius: '8px',
+                                            padding: '0.5rem',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px',
+                                            minWidth: '150px',
+                                            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+                                        }}
+                                    >
+                                        <MenuButton
+                                            onClick={() => { onNewFolder(targetId); onClose(); }}
+                                            icon={<GiSpellBook />}
+                                            label="Nouveau Grimoire"
+                                        />
+                                        <MenuButton
+                                            onClick={() => { onNewNote(targetId); onClose(); }}
+                                            icon={<GiScrollUnfurled />}
+                                            label="Nouveau Parchemin"
+                                        />
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 )}
 
-                {/* Séparateur si on a affiché l'invocation */}
+                {/* Séparateur */}
                 {isDirectoryOrRoot && <div style={{ height: '1px', background: '#5c0a61', margin: '4px 0' }} />}
 
-                {/* Actions contextuelles classiques (seulement si on a une cible précise, pas sur le vide/root) */}
+                {/* Actions contextuelles classiques */}
                 {targetId && (
                     <>
                         <MenuButton onClick={() => onRename(targetId)} icon={<GiQuill />} label="Renommer" />
                         <MenuButton onClick={() => onExport(targetId)} icon={<GiShare />} label="Exporter" />
-
                         <div style={{ height: '1px', background: '#5c0a61', margin: '4px 0' }} />
-
                         <MenuButton onClick={() => onDelete(targetId)} icon={<GiTrashCan />} label="Jeter au feu" danger />
                     </>
                 )}

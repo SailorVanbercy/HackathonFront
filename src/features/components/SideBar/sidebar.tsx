@@ -1,6 +1,6 @@
 import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { motion } from "framer-motion";
-import { GiMagicSwirl } from "react-icons/gi"; // Icône pour le bouton racine
+import { GiMagicSwirl } from "react-icons/gi";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
 import { SidebarHeader } from "./SideBarPart/SidebarHeader";
@@ -39,12 +39,14 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
 
+    // CORRECTION : Initialisation à undefined pour signifier "fermé"
+    // targetId: null signifie "ouvert sur la racine"
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
-        targetId: string | null;
+        targetId: string | null | undefined;
         targetType: 'directory' | 'note' | null
-    }>({ x: 0, y: 0, targetId: null, targetType: null });
+    }>({ x: 0, y: 0, targetId: undefined, targetType: null });
 
     const sidebarRef = useRef<HTMLDivElement | null>(null);
     const resizingRef = useRef<boolean>(false);
@@ -53,19 +55,20 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
     const handleContextMenu = (e: React.MouseEvent, id: string | null, type: 'directory' | 'note') => {
         e.preventDefault();
-        e.stopPropagation(); // Important pour éviter les conflits
+        e.stopPropagation();
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id, targetType: type });
     };
 
-    // Handler spécifique pour le bouton racine : ouvre le menu contextuel "Root"
+    // CORRECTION : stopPropagation et preventDefault pour éviter la fermeture immédiate
     const handleRootInvocation = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
         const rect = e.currentTarget.getBoundingClientRect();
-        // On positionne le menu juste en dessous du bouton
         setContextMenu({
             x: rect.left,
             y: rect.bottom + 5,
-            targetId: null, // null signifie "Root"
-            targetType: 'directory' // On le traite comme un dossier pour avoir l'option Invocation
+            targetId: null, // null = Root
+            targetType: 'directory'
         });
     };
 
@@ -73,23 +76,22 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         const node = tree.allNodes.find((n) => n.id === id);
         if (node) {
             modals.openRenameModal(id, node.name);
-            setContextMenu(p => ({ ...p, targetId: null })); // Ferme le menu
+            setContextMenu(p => ({ ...p, targetId: undefined }));
         }
     };
 
     const handleOpenDelete = (id: string) => {
         modals.openDeleteModal(id);
-        setContextMenu(p => ({ ...p, targetId: null }));
+        setContextMenu(p => ({ ...p, targetId: undefined }));
     };
 
     const handleOpenExport = (id: string | null) => {
         const node = id ? tree.allNodes.find((n) => n.id === id) : null;
         const type = node ? node.type : 'directory';
         modals.openExportModal(id, node?.name, type);
-        setContextMenu(p => ({ ...p, targetId: null }));
+        setContextMenu(p => ({ ...p, targetId: undefined }));
     };
 
-    // Modifié : accepte directement l'ID (string "dir-123" ou null)
     const handleOpenCreate = (parentId: string | null, type: CreationType = 'directory') => {
         let numParentId: number | null = null;
         if (parentId) {
@@ -98,7 +100,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
             if (!isNaN(parsed)) numParentId = parsed;
         }
         modals.openCreateModal(type, numParentId);
-        setContextMenu(p => ({ ...p, targetId: null }));
+        setContextMenu(p => ({ ...p, targetId: undefined }));
     };
 
     useImperativeHandle(ref, () => ({
@@ -125,7 +127,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         };
     }, []);
 
-    // @ts-ignore
     return (
         <>
             <aside ref={sidebarRef} className={`sidebar ${isCollapsed ? "collapsed" : ""}`} style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}>
@@ -135,14 +136,13 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
                 {!isCollapsed && (
                     <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
-
                         <SidebarHeader
                             search={search}
                             setSearch={setSearch}
                             isCollapsed={isCollapsed}
                         />
 
-                        {/* Nouveau Bouton "Racine" unique */}
+                        {/* Bouton Racine */}
                         <div style={{ padding: '0 10px 10px 10px' }}>
                             <button
                                 onClick={handleRootInvocation}
@@ -193,18 +193,21 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 )}
             </aside>
 
-            <ContextMenu
-                x={contextMenu.x}
-                y={contextMenu.y}
-                targetId={contextMenu.targetId}
-                targetType={contextMenu.targetType}
-                onClose={() => setContextMenu(p => ({ ...p, targetId: undefined }))} // Undefined ou null pour fermer
-                onRename={handleOpenRename}
-                onDelete={handleOpenDelete}
-                onExport={handleOpenExport}
-                onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')}
-                onNewNote={(parentId) => handleOpenCreate(parentId, 'note')}
-            />
+            {/* CORRECTION : Rendu conditionnel strict pour éviter que le listener global ne ferme le menu au montage */}
+            {contextMenu.targetId !== undefined && (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    targetId={contextMenu.targetId}
+                    targetType={contextMenu.targetType}
+                    onClose={() => setContextMenu(p => ({ ...p, targetId: undefined }))}
+                    onRename={handleOpenRename}
+                    onDelete={handleOpenDelete}
+                    onExport={handleOpenExport}
+                    onNewFolder={(parentId) => handleOpenCreate(parentId, 'directory')}
+                    onNewNote={(parentId) => handleOpenCreate(parentId, 'note')}
+                />
+            )}
 
             {modals.isCreateOpen && modals.creationType === 'directory' && (
                 <CreateFolderModal

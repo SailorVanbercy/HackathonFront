@@ -7,7 +7,7 @@ import type { FlatItem } from "../SideBarPart/sidebarTypes";
 const HIDDEN_ROOT_NAME = "root";
 
 export const useSidebarTree = (searchQuery: string = "") => {
-    // Données brutes (pour les modales)
+    // Données brutes
     const [directories, setDirectories] = useState<DirectoryDTO[]>([]);
     const [notes, setNotes] = useState<NoteTreeItemDTO[]>([]);
 
@@ -44,30 +44,79 @@ export const useSidebarTree = (searchQuery: string = "") => {
     // 3. Construction de l'arbre visuel (FlatList)
     const { visibleItems, matchSet, allNodes } = useMemo(() => {
         const flatList: FlatItem[] = [];
-        const matches = new Set<string>();
+        const matches = new Set<string>(); // IDs des éléments qui matchent le texte (pour surlignage)
         const nodesMap = new Map<string, { name: string; type: 'directory' | 'note' }>();
 
         const isSearching = searchQuery.trim().length > 0;
         const lowerQuery = searchQuery.toLowerCase();
+
+        // --- PHASE DE PRÉ-CALCUL (FILTRAGE STRICT) ---
+        // Set des IDs de dossiers qui doivent être visibles (le chemin vers les résultats)
+        const keptDirIds = new Set<number>();
+
+        if (isSearching) {
+            // Map pour remonter rapidement aux parents
+            const parentMap = new Map<number, number>();
+            directories.forEach(d => parentMap.set(d.id, d.parentDirectoryId || 0));
+
+            // Fonction pour marquer un dossier et tous ses ancêtres comme "à garder"
+            const keepAncestors = (dirId: number) => {
+                let curr: number | undefined = dirId;
+                // On remonte tant qu'on a un ID valide et qu'il n'est pas déjà marqué
+                while (curr && curr !== 0 && !keptDirIds.has(curr)) {
+                    keptDirIds.add(curr);
+                    curr = parentMap.get(curr);
+                }
+            };
+
+            // 1. Trouver les notes correspondantes et garder leurs parents
+            notes.forEach(n => {
+                if (n.name.toLowerCase().includes(lowerQuery)) {
+                    matches.add(`note-${n.id}`);
+                    if (n.directoryId) keepAncestors(n.directoryId);
+                }
+            });
+
+            // 2. Trouver les dossiers correspondants et garder leurs parents
+            directories.forEach(d => {
+                if (d.name.toLowerCase().includes(lowerQuery)) {
+                    matches.add(`dir-${d.id}`);
+                    keepAncestors(d.id); // On garde le dossier lui-même
+                    // On garde aussi ses parents
+                    if (d.parentDirectoryId) keepAncestors(d.parentDirectoryId);
+                }
+            });
+        }
+        // ---------------------------------------------
 
         // Identification du root
         const rootDir = directories.find((d) => d.name === HIDDEN_ROOT_NAME);
         const rootDirId = rootDir?.id;
 
         // Fonction récursive de traversée
-        // parentId : ID technique (number) du parent. 0 ou null pour la racine.
         const traverse = (parentId: number, currentDepth: number) => {
 
-            // Filtrer les enfants directs
-            const currentDirs = directories.filter((d) => {
+            // Filtrer les DOSSIERS enfants directs
+            let currentDirs = directories.filter((d) => {
                 if (parentId === 0) return !d.parentDirectoryId || d.parentDirectoryId === 0;
                 return d.parentDirectoryId === parentId;
             });
 
-            const currentNotes = notes.filter((n) => {
+            // Si recherche : on ne garde QUE ceux qui sont sur le chemin d'un résultat
+            if (isSearching) {
+                currentDirs = currentDirs.filter(d => keptDirIds.has(d.id));
+            }
+
+            // Filtrer les NOTES enfants directes
+            let currentNotes = notes.filter((n) => {
                 if (parentId === 0) return !n.directoryId || n.directoryId === 0;
                 return n.directoryId === parentId;
             });
+
+            // Si recherche : on ne garde QUE les notes qui matchent exactement
+            if (isSearching) {
+                currentNotes = currentNotes.filter(n => matches.has(`note-${n.id}`));
+            }
 
             // --- TRAITEMENT DES DOSSIERS ---
             for (const dir of currentDirs) {
@@ -76,22 +125,17 @@ export const useSidebarTree = (searchQuery: string = "") => {
 
                 // LOGIQUE ROOT CACHÉ
                 if (dir.id === rootDirId) {
-                    // On traverse les enfants sans ajouter ce dossier à la liste
-                    // Et on ne change pas la profondeur (currentDepth reste 0)
                     traverse(dir.id, currentDepth);
                     continue;
                 }
-
-                const isMatch = isSearching && dir.name.toLowerCase().includes(lowerQuery);
-                if (isMatch) matches.add(strId);
 
                 const hasChildren =
                     directories.some((d) => d.parentDirectoryId === dir.id) ||
                     notes.some((n) => n.directoryId === dir.id);
 
+                // En mode recherche, on force l'ouverture car on sait que c'est un dossier "utile"
                 const isOpen = expanded[strId] || isSearching;
 
-                // On ajoute le dossier à la liste visible
                 flatList.push({
                     id: strId,
                     name: dir.name,
@@ -110,25 +154,19 @@ export const useSidebarTree = (searchQuery: string = "") => {
                 const strId = `note-${note.id}`;
                 nodesMap.set(strId, { name: note.name, type: 'note' });
 
-                const isMatch = isSearching && note.name.toLowerCase().includes(lowerQuery);
-                if (isMatch) matches.add(strId);
-
-                if (!isSearching || isMatch) {
-                    flatList.push({
-                        id: strId,
-                        name: note.name,
-                        type: "note",
-                        depth: currentDepth,
-                        hasChildren: false,
-                    });
-                }
+                flatList.push({
+                    id: strId,
+                    name: note.name,
+                    type: "note",
+                    depth: currentDepth,
+                    hasChildren: false,
+                });
             }
         };
 
-        // Démarrage (0 = racine logique des parents)
+        // Démarrage
         traverse(0, 0);
 
-        // Reconversion de la map en tableau pour allNodes (utile pour l'export/rename)
         const allNodesList = Array.from(nodesMap.entries()).map(([id, val]) => ({ id, ...val }));
 
         return {
@@ -139,7 +177,7 @@ export const useSidebarTree = (searchQuery: string = "") => {
     }, [directories, notes, expanded, searchQuery]);
 
     return {
-        directories, // Export brut pour les modales
+        directories,
         visibleItems,
         allNodes,
         expanded,

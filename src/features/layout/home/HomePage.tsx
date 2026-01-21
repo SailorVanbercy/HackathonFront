@@ -52,11 +52,6 @@ export const HomePage = () => {
         }).slice(0, 3);
     }, [notes]);
 
-    const handleNewGrimoire = () => {
-        if (sidebarRef.current) {
-            sidebarRef.current.openCreateModal();
-        }
-    };
 
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return "";
@@ -104,11 +99,7 @@ export const HomePage = () => {
                     <p className="hero-subtitle">Prêt à écrire vos cauchemars ?</p>
                 </div>
 
-                <div className="main-actions">
-                    <button className="halloween-btn" onClick={handleNewGrimoire}>
-                        ✨ Nouveau Grimoire
-                    </button>
-                </div>
+                <div className="main-actions"></div>
 
                 <section className="recent-section">
                     <h2 className="section-title">Vos écrits récents</h2>
