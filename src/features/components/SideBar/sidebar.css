@@ -433,3 +433,29 @@
     color: #94a3b8;
     font-size: 0.8rem;
 }
+/* ========================================= */
+/* BOUTON HOME                               */
+/* ========================================= */
+.sidebar-home-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 5px; /* Espace avant le header */
+    background: rgba(255, 140, 0, 0.1); /* Fond léger orange */
+    border: 1px solid #5c0a61;
+    border-radius: 8px;
+    color: #ff8c00;
+    font-family: 'Cinzel', serif; /* Garde le thème */
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.sidebar-home-btn:hover {
+    background: rgba(255, 140, 0, 0.25);
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.2);
+    border-color: #ff8c00;
+    transform: translateY(-1px);
+}
+.home-icon { font-size: 1.2rem; }
+.home-text { font-weight: bold; }
