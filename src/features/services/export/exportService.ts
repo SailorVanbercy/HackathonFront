@@ -1,118 +1,87 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
-import { getAllNotes, getNotesByDirectory, getNoteById } from '../notes/noteService'; //
+import { getAllNotes, getNoteById } from '../notes/noteService';
+import { getAllDirectories } from '../directories/directoryService';
 
-//Fonction utilitaire pour récupérer le contenu texte d'une note
 const fetchNoteContent = async (noteId: number): Promise<string> => {
     try {
-        const note = await getNoteById(noteId); //
+        const note = await getNoteById(noteId);
         return note.content || "";
     } catch (error) {
-        console.error(`Erreur lors de la lecture de la note ${noteId}`, error);
-        return "Contenu indéchiffrable (Erreur de chargement).";
+        console.error(`Erreur note ${noteId}`, error);
+        return "Erreur de chargement.";
     }
 };
 
+// --- EXPORT DOSSIER (ZIP RÉCURSIF) ---
 export const exportAsZip = async (directoryName: string, directoryId: string | null) => {
     try {
         const zip = new JSZip();
-        const folder = zip.folder(directoryName);
+        const rootZipFolder = zip.folder(directoryName);
+        const [allDirs, allNotes] = await Promise.all([getAllDirectories(), getAllNotes()]);
 
-        // 1. Récupérer la liste des notes (du dossier ou globales)
-        let notesToExport: { id: number; name: string }[] = [];
+        const addContentToZip = async (currentZipFolder: JSZip | null, currentDbId: number | null) => {
+            // Notes
+            const notesHere = allNotes.filter(n => {
+                if (currentDbId === null) return n.directoryId === 0 || n.directoryId === null;
+                return n.directoryId === currentDbId;
+            });
+            await Promise.all(notesHere.map(async (note) => {
+                const content = await fetchNoteContent(note.id);
+                currentZipFolder?.file(`${note.name}.md`, content);
+            }));
 
-        if (directoryId) {
-            // Récupération par dossier
-            const fetched = await getNotesByDirectory(Number(directoryId));
-            notesToExport = fetched.map(n => ({ id: n.id, name: n.name }));
-        } else {
-            // Récupération globale (Racine/Tout)
-            const fetched = await getAllNotes();
-            notesToExport = fetched.map(n => ({ id: n.id, name: n.name }));
-        }
+            // Sous-dossiers
+            const dirsHere = allDirs.filter(d => {
+                if (currentDbId === null) return d.parentDirectoryId === 0 || d.parentDirectoryId === null;
+                return d.parentDirectoryId === currentDbId;
+            });
+            for (const subDir of dirsHere) {
+                const newZipSubFolder = currentZipFolder?.folder(subDir.name) || null;
+                await addContentToZip(newZipSubFolder, subDir.id);
+            }
+        };
 
-        // 2. Pour chaque note, récupérer son contenu et l'ajouter au ZIP
-        // On utilise Promise.all pour paralléliser les requêtes et aller plus vite
-        await Promise.all(notesToExport.map(async (note) => {
-            const content = await fetchNoteContent(note.id);
-            folder?.file(`${note.name}.md`, content); // On sauvegarde en Markdown
-        }));
-
-        // 3. Générer et télécharger le ZIP
+        const startId = directoryId ? Number(directoryId) : null;
+        await addContentToZip(rootZipFolder, startId);
         const content = await zip.generateAsync({ type: "blob" });
         saveAs(content, `${directoryName}.zip`);
-
     } catch (error) {
-        console.error("Échec du sortilège d'exportation ZIP", error);
+        console.error("Échec export ZIP", error);
         throw error;
     }
 };
 
-export const exportAsPdf = async (directoryName: string, directoryId: string | null) => {
+// --- EXPORT NOTE (PDF) ---
+export const exportNoteAsPdf = async (noteName: string, noteId: number) => {
     try {
         const doc = new jsPDF();
-
-        // Page de titre
+        const content = await fetchNoteContent(noteId);
         doc.setFont("times", "bold");
-        doc.setFontSize(24);
-        doc.text(directoryName, 20, 30);
+        doc.setFontSize(20);
+        doc.text(noteName, 20, 20);
+
+        doc.setFont("times", "normal");
         doc.setFontSize(12);
-        doc.setFont("times", "italic");
-        doc.text("Export du Grimoire", 20, 40);
+        const splitContent = doc.splitTextToSize(content, 170);
+        doc.text(splitContent, 20, 40);
 
-        // 1. Récupérer la liste
-        let notesToExport: { id: number; name: string }[] = [];
-
-        if (directoryId) {
-            const fetched = await getNotesByDirectory(Number(directoryId)); //
-            notesToExport = fetched.map(n => ({ id: n.id, name: n.name }));
-        } else {
-            const fetched = await getAllNotes(); //
-            notesToExport = fetched.map(n => ({ id: n.id, name: n.name }));
-        }
-
-        let yOffset = 60;
-        const pageHeight = doc.internal.pageSize.height;
-
-        // 2. Parcourir et ajouter chaque note au PDF
-        for (const note of notesToExport) {
-            const content = await fetchNoteContent(note.id);
-
-            // Gestion simple du saut de page si on est trop bas
-            if (yOffset > pageHeight - 40) {
-                doc.addPage();
-                yOffset = 20;
-            }
-
-            // Titre de la note
-            doc.setFont("times", "bold");
-            doc.setFontSize(16);
-            doc.text(note.name, 20, yOffset);
-            yOffset += 10;
-
-            // Contenu de la note
-            doc.setFont("times", "normal");
-            doc.setFontSize(12);
-
-            // splitTextToSize coupe le texte pour qu'il tienne dans la largeur (170mm)
-            const splitContent = doc.splitTextToSize(content, 170);
-
-            // Vérification de la place pour le contenu
-            if (yOffset + (splitContent.length * 7) > pageHeight - 20) {
-                doc.addPage();
-                yOffset = 20;
-            }
-
-            doc.text(splitContent, 20, yOffset);
-
-            // Espace après la note
-            yOffset += (splitContent.length * 7) + 20;
-        }
-
-        doc.save(`${directoryName}.pdf`);
+        doc.save(`${noteName}.pdf`);
     } catch (error) {
-        console.error("Échec du sortilège d'exportation PDF", error);
+        console.error("Échec export PDF", error);
+        throw error;
+    }
+};
+
+// --- EXPORT NOTE (MARKDOWN) ---
+export const exportNoteAsMarkdown = async (noteName: string, noteId: number) => {
+    try {
+        const content = await fetchNoteContent(noteId);
+        const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+        saveAs(blob, `${noteName}.md`);
+    } catch (error) {
+        console.error("Échec export MD", error);
         throw error;
     }
 };
