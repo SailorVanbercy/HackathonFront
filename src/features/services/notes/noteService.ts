@@ -47,7 +47,7 @@ interface GetNotesByDirResponse {
 // 1. RÉCUPÉRATION GLOBALE
 // GET /api/notes
 export const getAllNotes = async (): Promise<NoteTreeItemDTO[]> => {
-  const response = await fetch(API_URL, {
+  const response = await fetch(`${API_URL}/me`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
