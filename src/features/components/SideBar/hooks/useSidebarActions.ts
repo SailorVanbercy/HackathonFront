@@ -1,9 +1,19 @@
-import { useCallback } from 'react';
-import { createDirectory, updateDirectory, deleteDirectory } from '../../../services/directories/directoryService';
-import { createNote } from '../../../services/notes/noteService';
-import { exportAsZip, exportNoteAsPdf, exportNoteAsMarkdown, exportDirAsZip } from '../../../services/export/exportService';
-import type { UseSidebarModalsType } from './useSidebarModals';
 
+import { useCallback } from "react";
+import {
+  createDirectory,
+  updateDirectory,
+  deleteDirectory,
+} from "../../../services/directories/directoryService";
+import { createNote } from "../../../services/notes/noteService";
+import {
+  exportAsZip,
+    exportDirAsZip,
+  exportNoteAsPdf,
+  exportNoteAsMarkdown,
+} from "../../../services/export/exportService";
+import type { UseSidebarModalsType } from "./useSidebarModals";
+import { deleteNote } from "../../../services/notes/noteService";
 interface UseSidebarActionsProps {
     refreshTree: () => Promise<void>;
     modals: UseSidebarModalsType;
@@ -54,19 +64,23 @@ export const useSidebarActions = ({ refreshTree, modals, setExpanded }: UseSideb
         } catch (error) { console.error(error); }
     }, [refreshTree, modals]);
 
-    // --- DELETE (Inchangé) ---
-    const handleDeleteConfirm = useCallback(async () => {
-        const id = modals.targetDeleteId;
-        if (!id) return;
-        try {
-            const cleanId = String(id).replace("dir-", "").replace("note-", "");
-            if (id.startsWith("dir-")) {
-                await deleteDirectory(Number(cleanId));
-            }
-            await refreshTree();
-            modals.setIsDeleteOpen(false);
-        } catch (error) { console.error(error); }
-    }, [modals.targetDeleteId, refreshTree, modals]);
+  // --- DELETE (Inchangé) ---
+  const handleDeleteConfirm = useCallback(async () => {
+    const id = modals.targetDeleteId;
+    if (!id) return;
+    try {
+      const cleanId = String(id).replace("dir-", "").replace("note-", "");
+      if (id.startsWith("dir-")) {
+        await deleteDirectory(Number(cleanId));
+      } else if (id.startsWith("note-")) {
+        await deleteNote(Number(cleanId));
+      }
+      await refreshTree();
+      modals.setIsDeleteOpen(false);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [modals.targetDeleteId, refreshTree, modals]);
 
     // --- EXPORT (Inchangé) ---
     const handleExportConfirm = useCallback(async (format: 'zipAll' | 'zipDir' | 'pdf' | 'md') => {

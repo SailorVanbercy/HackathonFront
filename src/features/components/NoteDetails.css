@@ -270,6 +270,7 @@
     filter: grayscale(0.5);
 }
 
+
 /* =========================================
    6. PAPIER MAGIQUE (Gris Anthracite)
    ========================================= */
@@ -437,7 +438,7 @@
     color: #fff;
 }
 
-/* Popup de confirmation */
+/* Popup de confirmation (SUCCÈS) */
 .grim-save-popup {
     position: absolute;
     bottom: 30px;
@@ -459,6 +460,34 @@
 .popup-icon { font-size: 1.5rem; }
 .popup-text { font-family: "Courier New", monospace; font-weight: bold; }
 
+/* === Popup d'erreur (ERREUR) === */
+.grim-error-popup {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    background: rgba(26, 5, 26, 0.95); /* Même base sombre pour cohérence */
+    border: 1px solid #ff4d6d;         /* Rouge néon */
+    color: #ff4d6d;                    /* Texte rouge lumineux */
+    padding: 15px 25px;
+    border-radius: 8px;                /* Carré arrondi, comme la success */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 0 20px rgba(255, 77, 109, 0.35); /* Lueur rouge */
+    backdrop-filter: blur(4px);
+    animation: slideUpFade 0.5s ease-out;
+    z-index: 1000; /* Légèrement au-dessus pour priorité visuelle */
+}
+
+.grim-error-popup .popup-icon {
+    font-size: 1.5rem;
+}
+
+.grim-error-popup .popup-text {
+    font-family: "Courier New", monospace;
+    font-weight: bold;
+}
+
 /* ANIMATIONS */
 @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.9); }
@@ -468,4 +497,13 @@
 @keyframes slideUpFade {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* (Optionnel) Réduction des animations si l'utilisateur préfère */
+@media (prefers-reduced-motion: reduce) {
+    .grim-save-popup,
+    .grim-error-popup,
+    .grim-modal-content {
+        animation: none;
+    }
 }
