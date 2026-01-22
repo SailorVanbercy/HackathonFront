@@ -1,4 +1,9 @@
-
+body, html {
+    overflow-x: hidden; /* Coupe tout ce qui dépasse sur les côtés */
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
 /* L'app tient EXACTEMENT dans le viewport, sans scroll global */
 .app {
     height: 100vh;

@@ -11,16 +11,16 @@
     position: relative;
 }
 
-/* --- Zone principale --- */
 .main-area {
     flex: 1;
     min-width: 0;
     padding: 28px;
-    overflow-y: auto; /* Scroll vertical */
+    overflow-y: auto;
     position: relative;
     z-index: 1;
-    /* Transition fluide pour suivre l'ouverture de la sidebar */
     transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;              /* Active Flexbox */
+    flex-direction: column;     /* Empile les éléments verticalement */
 }
 
 /* --- Positionnement du Logout (Haut Droite) --- */
@@ -148,7 +148,7 @@
     right: 10%;
 }
 
-/* --- Section Cartes --- */
+    /* --- Section Cartes --- */
 .recent-section {
     max-width: 1000px;
     margin: 40px auto;
@@ -164,12 +164,16 @@
     text-shadow: 0 0 5px #ff8c00;
 }
 
+/* 1. LE CONTENEUR : Force l'alignement horizontal */
 .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
+    display: flex;              /* Active Flexbox */
+    flex-direction: row;        /* Aligne les enfants sur une ligne horizontale */
+    flex-wrap: wrap;            /* Permet de passer à la ligne sur petit écran */
+    gap: 20px;                  /* Espace entre les cartes */
+    justify-content: flex-start; /* Aligne tout à gauche */
 }
 
+/* 2. LA CARTE : Taille fixe pour s'aligner côte à côte */
 .spooky-card {
     background: rgba(30, 10, 30, 0.8);
     border: 1px solid #5c0a61;
@@ -180,6 +184,10 @@
     overflow: hidden;
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
     box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+
+    /* Largeur : Prend environ 1/3 de l'espace moins les marges */
+    flex: 0 1 calc(33.333% - 20px);
+    min-width: 250px; /* Ne devient pas plus petit que ça (passe à la ligne si besoin) */
 }
 
 .spooky-card::before {
@@ -196,6 +204,12 @@
     background: rgba(45, 15, 45, 0.9);
 }
 
+/* 3. LIMITE À 3 CARTES : Cache tout ce qui dépasse 3 éléments */
+.spooky-card:nth-child(n+4) {
+    display: none;
+}
+
+/* ... Le reste (card-header, h3, p) ne change pas ... */
 .card-header {
     display: flex;
     justify-content: space-between;
@@ -215,4 +229,22 @@
     font-size: 0.9rem;
     margin: 0;
     line-height: 1.4;
+}
+.spooky-separator {
+    margin-top: auto;
+    width: auto;
+    margin-left: -28px;
+    margin-right: -28px;
+    margin-bottom: -28px;
+    height: 150px;
+    line-height: 0;
+    z-index: 10;
+    position: relative;
+}
+.spooky-separator svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0px -10px 20px rgba(0,0,0,0.5));
+    preserveAspectRatio: none;
 }

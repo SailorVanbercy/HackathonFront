@@ -1,9 +1,6 @@
-/* src/features/components/SideBar/sidebar.css */
-
 /* ------- Sidebar Principale ------- */
 .sidebar {
     position: relative;
-    /* On laisse le TSX gérer le width, mais on assure le min-width */
     min-width: 0;
 
     /* Fond dégradé sombre + texture subtile */
@@ -20,7 +17,8 @@
     padding: 16px 12px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    /* On réduit le gap global car la grille gère l'espacement du haut */
+    gap: 10px;
 
     /* IMPORTANT : On force visible pour que le bouton citrouille dépasse */
     overflow: visible !important;
@@ -33,7 +31,6 @@
 /* --- ETAT FERMÉ --- */
 .sidebar.collapsed {
     padding: 0 !important;
-    /* On cache la bordure quand fermé pour que le bouton colle parfaitement au bord écran */
     border-right: none !important;
 }
 
@@ -54,19 +51,15 @@
     pointer-events: none;
 }
 
-/* --- BOUTON DEMI-CITROUILLE (CORRECTIF MAJEUR) --- */
-/* L'utilisation de !important est OBLIGATOIRE ici car le fichier TSX
-   contient des styles inline (background, border, position) qui sont prioritaires sinon. */
+/* --- BOUTON DEMI-CITROUILLE --- */
 .collapse-btn {
-    /* 1. On force la Position et la Taille */
     position: absolute !important;
     top: 20px !important;
-    right: -34px !important; /* On le force à sortir de la sidebar (34px de large) */
+    right: -34px !important;
     width: 34px !important;
     height: 46px !important;
     z-index: 100 !important;
 
-    /* 2. On force l'apparence Citrouille (écrase le gris du TSX) */
     background:
             repeating-linear-gradient(
                     90deg,
@@ -77,20 +70,16 @@
             ),
             linear-gradient(to right, #d35400, #ff8c00) !important;
 
-    /* 3. On force la forme et les bordures */
-    border-radius: 0 23px 23px 0 !important; /* Forme en D */
+    border-radius: 0 23px 23px 0 !important;
     border: 2px solid #5d2e08 !important;
-    border-left: none !important; /* Fusion visuelle avec la sidebar */
+    border-left: none !important;
 
-    /* 4. On force les styles de contenu (flexbox et couleur) */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     color: #3e2723 !important;
     cursor: pointer !important;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.5) !important;
-
-    /* Animation (ne pas mettre !important ici pour laisser Framer Motion travailler si besoin) */
     transition: transform 0.2s, background-color 0.2s;
 }
 
@@ -99,7 +88,6 @@
     background-color: #ff9800 !important;
 }
 
-/* Tige verte sur la citrouille */
 .collapse-btn::before {
     content: '';
     position: absolute;
@@ -120,32 +108,71 @@
     border-bottom: 2px solid #5c0a61;
     filter: drop-shadow(0 0 2px #5c0a61) drop-shadow(0 0 4px #5c0a61);
     transition: transform 0.3s;
-    /* Correction positionnement visuel */
     margin-right: 4px;
 }
-
-/* Flèche vers la droite (pour ouvrir) */
 .chevron.right { transform: rotate(-45deg); margin-left: -4px; }
-/* Flèche vers la gauche (pour fermer) */
 .chevron.left { transform: rotate(135deg); margin-right: -4px; }
 
-/* --- RESTE DES STYLES (Search, Tree, etc.) --- */
-.sidebar-top {
-    display: flex;
-    flex-direction: column;
+
+/* ========================================================= */
+/* --- NOUVEAU LAYOUT GRILLE (Header + Invocation) ---       */
+/* ========================================================= */
+
+.sidebar-grid {
+    display: grid;
+    /* Colonne 1 : taille du contenu (bouton home), Colonne 2 : le reste (search) */
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;   /* Ligne 1 : Home/Search, Ligne 2 : Invocation */
     gap: 8px;
+    width: 100%;
+    margin-bottom: 5px;
     flex-shrink: 0;
 }
 
-.search-wrap { position: relative; width: 100%; }
+/* BOUTON HOME (Adapté pour la grille) */
+.sidebar-home-btn {
+    grid-column: 1;
+    grid-row: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px; /* Carré */
+    height: 42px;
+    padding: 0;
+    margin: 0; /* Plus de margin bottom, la grille gère le gap */
+
+    background: rgba(255, 140, 0, 0.1);
+    border: 1px solid #5c0a61;
+    border-radius: 8px;
+    color: #ff8c00;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.sidebar-home-btn:hover {
+    background: rgba(255, 140, 0, 0.25);
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.2);
+    border-color: #ff8c00;
+}
+
+/* SEARCH WRAP (Adapté pour la grille) */
+.search-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    width: 100%;
+    height: 42px; /* Même hauteur que bouton home */
+}
 .search-ico {
     position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
     color: #ff8c00; filter: drop-shadow(0 0 2px #ff8c00);
+    z-index: 2;
 }
 
 .sidebar-search {
     width: 100%;
-    padding: 10px 10px 10px 34px;
+    height: 100%;
+    padding: 0 10px 0 34px; /* Padding ajusté pour centrer verticalement le texte */
     border-radius: 4px;
     border: 1px solid #5c0a61;
     background: rgba(0, 0, 0, 0.3);
@@ -159,6 +186,41 @@
     box-shadow: 0 0 8px rgba(255, 140, 0, 0.3);
     outline: none;
 }
+
+/* BOUTON INVOCATION (Adapté pour la grille) */
+.invocation-btn {
+    grid-column: 1 / -1; /* Prend toute la largeur (col 1 à fin) */
+    grid-row: 2;
+
+    width: 100%;
+    padding: 8px;
+
+    background: linear-gradient(45deg, #2a0a2e, #1a001a);
+    border: 1px solid #ff8c00;
+    color: #ffcc99;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 0 5px rgba(255, 140, 0, 0.2);
+    transition: all 0.2s;
+}
+.invocation-btn:hover {
+    background: linear-gradient(45deg, #350d3a, #250025);
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.4);
+    border-color: #ffaa00;
+    color: #fff;
+    transform: translateY(-1px);
+}
+.invocation-btn:active {
+    transform: translateY(0);
+}
+
+/* ========================================================= */
 
 /* Arbre des fichiers */
 .tree {
@@ -226,54 +288,24 @@
 /* ========================================= */
 /* MODALES (Inchangé)                        */
 /* ========================================= */
-/* --- MODALES MAGIQUES (New Design) --- */
-
-/* Le fond obscurci et flou */
 .modal-overlay {
-    /* CRUCIAL : !important force la sortie du flux pour ne RIEN décaler */
     position: absolute !important;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-
-    /* On centre, mais on s'assure que ça déborde visiblement */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    /* Le fond reste contenu dans la sidebar */
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
     background: rgba(10, 5, 15, 0.85);
     backdrop-filter: blur(5px);
-
-    /* Z-index élevé pour passer au-dessus de l'arbre mais sous le bouton citrouille (si voulu) */
-    z-index: 50;
-    border-radius: inherit;
-
-    /* IMPORTANT : Permet au contenu enfant de dépasser visuellement de cet overlay */
+    z-index: 50; border-radius: inherit;
     overflow: visible !important;
 }
 
-/* La boîte de la modale */
 .modal-content {
-    /* Style visuel */
     background: linear-gradient(145deg, #1e1b2e 0%, #151020 100%);
     border: 1px solid #4c3a6e;
     box-shadow: 0 0 25px rgba(139, 92, 246, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     border-radius: 16px;
     padding: 2rem;
-
-    /* TAILLE & DÉBORDEMENT */
-    /* On garde une largeur relative à la sidebar... */
-    width: 90%;
-    /* ...MAIS on impose une largeur mini qui forcera le dépassement (pop-out) */
-    min-width: 320px;
-    max-width: 450px;
-
-    color: #e2e8f0;
-    position: relative; /* Pour que le z-index fonctionne si besoin */
-
-    /* Animation d'entrée pour l'effet "Pop" */
+    width: 90%; min-width: 320px; max-width: 450px;
+    color: #e2e8f0; position: relative;
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -283,179 +315,65 @@
 }
 
 .modal-title {
-    font-size: 1.5rem;
-    text-align: center;
-    margin-bottom: 1.5rem;
+    font-size: 1.5rem; text-align: center; margin-bottom: 1.5rem;
     background: linear-gradient(to right, #c084fc, #e879f9);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-weight: bold; letter-spacing: 0.5px;
 }
 
-.modal-body {
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-}
+.modal-body { display: flex; flex-direction: column; gap: 1.2rem; }
 
-/* Labels */
 .modal-label {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #94a3b8;
-    margin-bottom: 0.25rem;
-    display: block;
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;
+    color: #94a3b8; margin-bottom: 0.25rem; display: block;
 }
 
-/* Inputs & Selects "Magiques" */
 .magic-input, .magic-select {
-    width: 100%;
-    padding: 12px 16px;
+    width: 100%; padding: 12px 16px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid #4b5563;
-    border-radius: 8px;
-    color: #f3f4f6;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    outline: none;
+    border: 1px solid #4b5563; border-radius: 8px; color: #f3f4f6;
+    font-size: 1rem; transition: all 0.3s ease; outline: none;
 }
-
 .magic-input:focus, .magic-select:focus {
-    border-color: #a855f7;
-    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+    border-color: #a855f7; box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
     background: rgba(0, 0, 0, 0.5);
 }
-
 .magic-select {
-    cursor: pointer;
-    appearance: none; /* Cache la flèche par défaut moche */
+    cursor: pointer; appearance: none;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a855f7' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
+    background-position: right 0.5rem center; background-repeat: no-repeat;
+    background-size: 1.5em 1.5em; padding-right: 2.5rem;
 }
 
-/* Boutons d'action */
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
-}
+.modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
 
 .btn-ghost {
-    background: transparent;
-    color: #94a3b8;
-    border: none;
-    padding: 8px 16px;
-    cursor: pointer;
-    transition: color 0.2s;
+    background: transparent; color: #94a3b8; border: none; padding: 8px 16px;
+    cursor: pointer; transition: color 0.2s;
 }
-.btn-ghost:hover {
-    color: #f1f5f9;
-}
+.btn-ghost:hover { color: #f1f5f9; }
 
 .btn-magic {
     background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-    color: white;
-    border: none;
-    padding: 10px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
+    color: white; border: none; padding: 10px 24px; border-radius: 8px;
+    font-weight: 600; cursor: pointer;
     box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.3);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    transition: all 0.2s; display: flex; align-items: center; gap: 8px;
 }
+.btn-magic:hover { transform: translateY(-1px); box-shadow: 0 6px 15px -1px rgba(124, 58, 237, 0.5); }
+.btn-magic:disabled { background: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; transform: none; }
 
-.btn-magic:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 15px -1px rgba(124, 58, 237, 0.5);
-}
-
-.btn-magic:disabled {
-    background: #334155;
-    color: #64748b;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-}
-
-/* --- CARTES D'EXPORT (Nouveau style) --- */
-.export-options {
-    display: grid;
-    gap: 1rem;
-}
-
+.export-options { display: grid; gap: 1rem; }
 .export-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid #334155;
-    padding: 1rem;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
+    display: flex; align-items: center; gap: 1rem;
+    background: rgba(255, 255, 255, 0.03); border: 1px solid #334155;
+    padding: 1rem; border-radius: 10px; cursor: pointer;
+    transition: all 0.2s ease; text-align: left;
 }
-
-.export-card:hover {
-    background: rgba(124, 58, 237, 0.1);
-    border-color: #7c3aed;
-    transform: scale(1.02);
-}
-
+.export-card:hover { background: rgba(124, 58, 237, 0.1); border-color: #7c3aed; transform: scale(1.02); }
 .export-icon {
-    font-size: 1.8rem;
-    background: rgba(0,0,0,0.3);
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
+    font-size: 1.8rem; background: rgba(0,0,0,0.3); width: 48px; height: 48px;
+    display: flex; align-items: center; justify-content: center; border-radius: 8px;
 }
-
-.export-info h4 {
-    margin: 0 0 0.25rem 0;
-    color: #e2e8f0;
-    font-size: 1rem;
-}
-
-.export-info p {
-    margin: 0;
-    color: #94a3b8;
-    font-size: 0.8rem;
-}
-/* ========================================= */
-/* BOUTON HOME                               */
-/* ========================================= */
-.sidebar-home-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 5px; /* Espace avant le header */
-    background: rgba(255, 140, 0, 0.1); /* Fond léger orange */
-    border: 1px solid #5c0a61;
-    border-radius: 8px;
-    color: #ff8c00;
-    font-family: 'Cinzel', serif; /* Garde le thème */
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.sidebar-home-btn:hover {
-    background: rgba(255, 140, 0, 0.25);
-    box-shadow: 0 0 10px rgba(255, 140, 0, 0.2);
-    border-color: #ff8c00;
-    transform: translateY(-1px);
-}
-.home-icon { font-size: 1.2rem; }
-.home-text { font-weight: bold; }
+.export-info h4 { margin: 0 0 0.25rem 0; color: #e2e8f0; font-size: 1rem; }
+.export-info p { margin: 0; color: #94a3b8; font-size: 0.8rem; }

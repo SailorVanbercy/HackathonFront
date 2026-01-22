@@ -1,9 +1,8 @@
 import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { motion } from "framer-motion";
-import { GiMagicSwirl } from "react-icons/gi";
+import { GiMagicSwirl, GiHouse } from "react-icons/gi";
 import "./sidebar.css";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
-import { SidebarHeader } from "./SideBarPart/SidebarHeader";
 import { SidebarTree } from "./SideBarPart/SidebarTree";
 import { CreateFolderModal, CreateNoteModal, RenameModal, DeleteModal, ExportModal } from "./SideBarPart/SidebarModals";
 import { useSidebarTree } from "./hooks/useSidebarTree";
@@ -39,8 +38,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
 
-    // CORRECTION : Initialisation à undefined pour signifier "fermé"
-    // targetId: null signifie "ouvert sur la racine"
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
@@ -59,7 +56,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id, targetType: type });
     };
 
-    // CORRECTION : stopPropagation et preventDefault pour éviter la fermeture immédiate
     const handleRootInvocation = (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
@@ -136,44 +132,35 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
                 {!isCollapsed && (
                     <div className="sidebar-content" style={{ overflow: 'hidden', height: '100%' }}>
-                        <SidebarHeader
-                            search={search}
-                            setSearch={setSearch}
-                            isCollapsed={isCollapsed}
-                        />
 
-                        {/* Bouton Racine */}
-                        <div style={{ padding: '0 10px 10px 10px' }}>
+                        {/* --- NOUVELLE GRILLE DE HEADER --- */}
+                        <div className="sidebar-grid">
+                            {/* 1. Bouton Home */}
+                            <button className="sidebar-home-btn" title="Accueil">
+                                <span className="home-icon"><GiHouse size={20} /></span>
+                            </button>
+
+                            {/* 2. Barre de Recherche */}
+                            <div className="search-wrap">
+                                <span className="search-ico">🕸️</span>
+                                <input
+                                    type="text"
+                                    className="sidebar-search"
+                                    placeholder="Rechercher..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+
+                            {/* 3. Bouton Invocation */}
                             <button
+                                className="invocation-btn"
                                 onClick={handleRootInvocation}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    background: 'linear-gradient(45deg, #2a0a2e, #1a001a)',
-                                    border: '1px solid #ff8c00',
-                                    color: '#ffcc99',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.9rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    boxShadow: '0 0 5px rgba(255, 140, 0, 0.2)',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.boxShadow = '0 0 10px rgba(255, 140, 0, 0.4)';
-                                    e.currentTarget.style.borderColor = '#ffaa00';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.boxShadow = '0 0 5px rgba(255, 140, 0, 0.2)';
-                                    e.currentTarget.style.borderColor = '#ff8c00';
-                                }}
                             >
                                 <GiMagicSwirl /> Invocation (Racine)
                             </button>
                         </div>
+                        {/* --- FIN GRILLE --- */}
 
                         <SidebarTree
                             isLoading={tree.isLoading}
@@ -193,7 +180,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 )}
             </aside>
 
-            {/* CORRECTION : Rendu conditionnel strict pour éviter que le listener global ne ferme le menu au montage */}
             {contextMenu.targetId !== undefined && (
                 <ContextMenu
                     x={contextMenu.x}
