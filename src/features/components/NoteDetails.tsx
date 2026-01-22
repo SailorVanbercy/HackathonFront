@@ -93,27 +93,49 @@ const NoteDetails = () => {
   const lastSavedTitleRef = useRef<string>("");
   const lastSavedContentRef = useRef<string>("");
 
+  // On étend l'extension Link pour rendre l'attribut target DYNAMIQUE
+  const CustomLink = Link.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        href: {
+          default: null,
+        },
+        target: {
+          default: null,
+          parseHTML: (element) => element.getAttribute("target"),
+          renderHTML: (attributes) => {
+            // C'est ICI que se trouve la magie 🪄
+            // Si le lien est interne (/note/...), on ne met pas de target
+            if (attributes.href && attributes.href.startsWith("/note/")) {
+              return {};
+            }
+            // Sinon (lien externe), on force l'ouverture dans un nouvel onglet
+            return {
+              target: "_blank",
+              rel: "noopener noreferrer", // Sécurité standard
+            };
+          },
+        },
+      };
+    },
+  });
+
   // --- CONFIGURATION DE L'ÉDITEUR ---
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Link.configure({
-        openOnClick: false,
+      // On utilise notre extension intelligente ici
+      CustomLink.configure({
+        openOnClick: false, // On garde false pour gérer l'interne nous-mêmes
         autolink: true,
-        // IMPORTANT : On retire le target du HTML pour gérer nous-même l'ouverture
-        HTMLAttributes: {
-          target: null,
-          rel: "noopener noreferrer",
-        },
       }),
     ],
     content: "",
     editable: true,
-
     editorProps: {
       attributes: { class: "tiptap-content" },
 
-      // Gestionnaire pour l'Autosave (Blur)
       handleDOMEvents: {
         blur: () => {
           scheduleAutosave(0);
@@ -121,29 +143,32 @@ const NoteDetails = () => {
         },
       },
 
-      // Gestionnaire pour les Liens (Navigation)
+      // Le gestionnaire devient très simple et ne gère QUE l'interne
       handleClick: (view, pos, event) => {
         const isReadMode = isReadOnlyRef.current;
         const target = event.target as HTMLElement;
         const link = target.closest("a");
 
         if (link && link.href) {
-          event.preventDefault();
-          event.stopPropagation();
-
           const url = new URL(link.href);
           const currentOrigin = window.location.origin;
+
+          // On vérifie si c'est interne
           const isInternal =
             url.origin === currentOrigin && url.pathname.startsWith("/note/");
 
+          // CAS 1 : Lien Interne -> On intercepte pour la SPA
           if (isInternal) {
-            // Navigation interne (SPA)
-            navigateRef.current(url.pathname);
-          } else {
-            // Lien externe : ouverture propre
-            window.open(link.href, "_blank");
+            event.preventDefault(); // On bloque le navigateur
+            navigateRef.current(url.pathname); // On navigue avec React Router
+            return true;
           }
-          return true;
+
+          // CAS 2 : Lien Externe -> ON NE FAIT RIEN DU TOUT.
+          // Grâce à CustomLink, le HTML contient déjà target="_blank".
+          // Le navigateur va donc l'ouvrir dans un nouvel onglet naturellement.
+          // Pas de JS = Pas de bug de double ouverture.
+          return false;
         }
         return false;
       },
