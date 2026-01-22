@@ -47,6 +47,10 @@ const NoteDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
 
+  // Refs pour éviter les "Stale Closures"
+  const isReadOnlyRef = useRef(isReadOnly);
+  const navigateRef = useRef(navigate);
+
   // --- États Modales ---
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSavePopup, setShowSavePopup] = useState(false);
@@ -77,6 +81,10 @@ const NoteDetails = () => {
       Link.configure({
         openOnClick: false, // On gère le clic manuellement
         autolink: true,
+        HTMLAttributes: {
+          target: null,
+          rel: "noopener noreferrer",
+        },
       }),
     ],
     content: "",
@@ -86,32 +94,28 @@ const NoteDetails = () => {
 
       // --- CORRECTION DU BUG D'OUVERTURE ---
       handleClick: (view, pos, event) => {
+        const isReadMode = isReadOnlyRef.current;
         const target = event.target as HTMLElement;
         const link = target.closest("a");
 
         if (link && link.href) {
-          // On analyse l'URL complète pour éviter les erreurs de chemin relatif/absolu
+          // Si on est en mode lecture, ON STOPPE TOUT comportement natif immédiatement
+          event.preventDefault();
+          event.stopPropagation();
+
           const url = new URL(link.href);
           const currentOrigin = window.location.origin;
-
-          // C'est un lien interne si même domaine ET commence par /note/
           const isInternal =
             url.origin === currentOrigin && url.pathname.startsWith("/note/");
 
-          // CAS 1 : Navigation interne (SPA)
           if (isInternal) {
-            event.preventDefault(); // Empêche le rechargement complet
-            navigate(url.pathname); // Navigation React Router
-            return true;
-          }
-
-          // CAS 2 : Lien externe en mode lecture
-          // On empêche le comportement par défaut pour éviter l'ouverture en double
-          if (isReadOnly) {
-            event.preventDefault();
+            // Navigation SPA (interne)
+            navigateRef.current(url.pathname);
+          } else {
+            // Lien externe : on l'ouvre proprement en JS
             window.open(link.href, "_blank");
-            return true;
           }
+          return true;
         }
         return false;
       },
