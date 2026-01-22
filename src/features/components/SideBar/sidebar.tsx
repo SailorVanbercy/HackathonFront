@@ -9,6 +9,7 @@ import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import {useHotkeys} from "react-hotkeys-hook";
+import {useNavigate} from "react-router";
 
 export interface SidebarHandle {
     openCreateModal: () => void;
@@ -24,6 +25,7 @@ const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
+    let navigate = useNavigate();
     // État de recherche
     const [search, setSearch] = useState("");
 
@@ -158,7 +160,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                         {/* --- NOUVELLE GRILLE DE HEADER --- */}
                         <div className="sidebar-grid">
                             {/* 1. Bouton Home */}
-                            <button className="sidebar-home-btn" title="Accueil">
+                            <button className="sidebar-home-btn" title="Accueil" onClick={() => navigate(("/home"))}>
                                 <span className="home-icon"><GiHouse size={20} /></span>
                             </button>
 
