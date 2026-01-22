@@ -567,3 +567,49 @@
     animation: none;
   }
 }
+
+/* Footer Metadata */
+.meta-footer {
+  width: 100%;
+  padding: 10px 20px;
+  background: #1c1c1c;
+  color: #ddd;
+  border-top: 1px solid #333;
+  font-size: 0.85rem;
+  position: sticky; /* reste en bas du viewport */
+  bottom: 0;
+  z-index: 999;
+}
+
+.meta-info-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.meta-error {
+  color: #ff7777;
+}
+
+
+.save-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.3);
+}
+
+.save-indicator.dirty {
+    background-color: #ff4d4d;
+}
+
+.save-indicator.saving {
+    background-color: #ffcc00;
+}
+
+.save-indicator.saved {
+    background-color: #2ecc71;
+}
+
