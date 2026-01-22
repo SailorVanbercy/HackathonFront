@@ -130,21 +130,21 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     useHotkeys('alt+n', (e) => {
         e.preventDefault();
         modals.openCreateModal('note', null);
-    }, {enableOnFormTags: true, preventDefault: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault: true}, [modals]);
     useHotkeys('alt+d', (e) => {
         e.preventDefault();
         modals.openCreateModal('directory', null);
-    }, {enableOnFormTags: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault:true}, [modals]);
     useHotkeys('alt+t', (e) => {
         e.preventDefault();
         toggleCollapse();
-    }, {enableOnFormTags: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault:true}, [modals]);
 
     // MODIFIÉ : Alt+G ouvre maintenant l'export en mode global (4ème paramètre = true)
     useHotkeys('alt+g', (e) => {
         e.preventDefault();
         modals.openExportModal(null, undefined, 'directory', true);
-    }, {enableOnFormTags: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault:true}, [modals]);
 
 
     return (
