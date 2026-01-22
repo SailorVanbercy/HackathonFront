@@ -9,6 +9,7 @@ import { CreateFolderModal, CreateNoteModal, RenameModal, DeleteModal, ExportMod
 import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
+import {useHotkeys} from "react-hotkeys-hook";
 
 export interface SidebarHandle {
     openCreateModal: () => void;
@@ -39,8 +40,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(280);
 
-    // CORRECTION : Initialisation à undefined pour signifier "fermé"
-    // targetId: null signifie "ouvert sur la racine"
     const [contextMenu, setContextMenu] = useState<{
         x: number;
         y: number;
@@ -59,7 +58,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         setContextMenu({ x: e.clientX, y: e.clientY, targetId: id, targetType: type });
     };
 
-    // CORRECTION : stopPropagation et preventDefault pour éviter la fermeture immédiate
     const handleRootInvocation = (e: React.MouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
@@ -127,6 +125,27 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
         };
     }, []);
 
+    // Raccourcis clavier
+    useHotkeys('alt+n', (e) => {
+        e.preventDefault();
+        modals.openCreateModal('note', null);
+    }, {enableOnFormTags: true, preventDefault: true}, [modals]);
+    useHotkeys('alt+d', (e) => {
+        e.preventDefault();
+        modals.openCreateModal('directory', null);
+    }, {enableOnFormTags: true}, [modals]);
+    useHotkeys('alt+t', (e) => {
+        e.preventDefault();
+        toggleCollapse();
+    }, {enableOnFormTags: true}, [modals]);
+
+    // MODIFIÉ : Alt+G ouvre maintenant l'export en mode global (4ème paramètre = true)
+    useHotkeys('alt+g', (e) => {
+        e.preventDefault();
+        modals.openExportModal(null, undefined, 'directory', true);
+    }, {enableOnFormTags: true}, [modals]);
+
+
     return (
         <>
             <aside ref={sidebarRef} className={`sidebar ${isCollapsed ? "collapsed" : ""}`} style={{ width: isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}>
@@ -193,7 +212,6 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                 )}
             </aside>
 
-            {/* CORRECTION : Rendu conditionnel strict pour éviter que le listener global ne ferme le menu au montage */}
             {contextMenu.targetId !== undefined && (
                 <ContextMenu
                     x={contextMenu.x}
@@ -229,7 +247,16 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
 
             <RenameModal isOpen={modals.isRenameOpen} onClose={() => modals.setIsRenameOpen(false)} onSubmit={actions.handleRenameSubmit} value={modals.renameValue} setValue={modals.setRenameValue} />
             <DeleteModal isOpen={modals.isDeleteOpen} onClose={() => modals.setIsDeleteOpen(false)} onConfirm={actions.handleDeleteConfirm} />
-            <ExportModal isOpen={modals.isExportOpen} onClose={() => modals.setIsExportOpen(false)} onConfirm={actions.handleExportConfirm} folderName={modals.exportTargetName} itemType={modals.exportItemType || 'directory'} />
+
+            {/* MODIFIÉ : On passe la propriété isGlobal */}
+            <ExportModal
+                isOpen={modals.isExportOpen}
+                onClose={() => modals.setIsExportOpen(false)}
+                onConfirm={actions.handleExportConfirm}
+                folderName={modals.exportTargetName}
+                itemType={modals.exportItemType || 'directory'}
+                isGlobal={modals.isGlobalExport}
+            />
         </>
     );
 });

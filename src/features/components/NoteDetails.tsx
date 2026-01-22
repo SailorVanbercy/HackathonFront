@@ -1,4 +1,3 @@
-
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -33,19 +32,20 @@ const formatBytes = (bytes: number, decimals = 1) => {
     const v = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
     return `${v} ${sizes[i]}`;
 };
+import {useHotkeys} from "react-hotkeys-hook";
 
 const NoteDetails = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-    // États existants
-    const [title, setTitle] = useState("");
-    const [isReadOnly, setIsReadOnly] = useState(false);
-    const [showInfoModal, setShowInfoModal] = useState(false);
+  // États existants
+  const [title, setTitle] = useState("");
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
-    // États popup
-    const [showErrorPopup, setShowErrorPopup] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
+  // Popup d'erreur personnalisée
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
     // Metadata
     const [isMetaPanelOpen] = useState(false);
@@ -275,7 +275,34 @@ const NoteDetails = () => {
         }
     };
 
-    if (!editor) return null;
+
+    useHotkeys('alt+v', (e) => {
+        e.preventDefault();
+        setIsReadOnly(!isReadOnly);
+    },{
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+        preventDefault: true
+    });
+
+    useHotkeys('alt+i', (e) => {
+        e.preventDefault();
+        setShowInfoModal(!showInfoModal);
+    }, {
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+        preventDefault: true
+    });
+    useHotkeys('ctrl +enter', (e) => {
+        e.preventDefault();
+        navigate("/home");
+    }, {
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+        preventDefault: true
+    });
+
+  if (!editor) return null;
 
     return (
         <div className="grim-layout">

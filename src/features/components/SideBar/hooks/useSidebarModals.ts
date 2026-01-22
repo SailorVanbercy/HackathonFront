@@ -32,7 +32,9 @@ export interface UseSidebarModalsType {
     targetExportId: string | null;
     exportTargetName: string | undefined;
     exportItemType: 'directory' | 'note' | null;
-    openExportModal: (id: string | null, name?: string, type?: 'directory' | 'note') => void;
+    // NOUVEAU : État pour savoir s'il s'agit d'un export global (via raccourci)
+    isGlobalExport: boolean;
+    openExportModal: (id: string | null, name?: string, type?: 'directory' | 'note', global?: boolean) => void;
 }
 
 export const useSidebarModals = (): UseSidebarModalsType => {
@@ -72,11 +74,14 @@ export const useSidebarModals = (): UseSidebarModalsType => {
     const [targetExportId, setTargetExportId] = useState<string | null>(null);
     const [exportTargetName, setExportTargetName] = useState<string | undefined>(undefined);
     const [exportItemType, setExportItemType] = useState<'directory' | 'note' | null>(null);
+    // NOUVEAU : État global
+    const [isGlobalExport, setIsGlobalExport] = useState(false);
 
-    const openExportModal = (id: string | null, name?: string, type: 'directory' | 'note' = 'directory') => {
+    const openExportModal = (id: string | null, name?: string, type: 'directory' | 'note' = 'directory', global: boolean = false) => {
         setTargetExportId(id);
         setExportTargetName(name);
         setExportItemType(id === null ? 'directory' : type);
+        setIsGlobalExport(global); // On enregistre si c'est global
         setIsExportOpen(true);
     };
 
@@ -85,7 +90,7 @@ export const useSidebarModals = (): UseSidebarModalsType => {
         isCreateOpen,
         setIsCreateOpen,
         targetParentId,
-        setTargetParentId, // Plus besoin de 'as any'
+        setTargetParentId,
         creationType,
         openCreateModal,
 
@@ -96,6 +101,6 @@ export const useSidebarModals = (): UseSidebarModalsType => {
         isDeleteOpen, setIsDeleteOpen, targetDeleteId, openDeleteModal,
 
         // EXPORT
-        isExportOpen, setIsExportOpen, targetExportId, exportTargetName, exportItemType, openExportModal
+        isExportOpen, setIsExportOpen, targetExportId, exportTargetName, exportItemType, isGlobalExport, openExportModal
     };
 };
