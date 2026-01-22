@@ -57,26 +57,83 @@ export const HomePage = () => {
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return "";
         const d = new Date(dateStr);
-        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        return d.toLocaleString('fr-FR', {
+            day: 'numeric',
+            month: 'long',   // ex: "octobre"
+            hour: '2-digit', // ex: "14"
+            minute: '2-digit' // ex: "30"
+        });
     };
 
     const getRecencyLabel = (note: NoteDisplay) => {
         const date = note.updatedAt ? new Date(note.updatedAt) : new Date(note.createdAt);
         const now = new Date();
         const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 3600 * 24));
-
-        if (diffDays === 0) return { label: "Aujourd'hui", icon: "🌙" };
+        if (diffDays === 0) {
+            return {
+                label: formatDate(note.updatedAt || note.createdAt),
+                icon: "🌙"
+            };
+        }
         if (diffDays === 1) return { label: "Hier", icon: "🔮" };
         return { label: formatDate(note.updatedAt || note.createdAt), icon: "🕯️" };
     };
+    const SpookySeparator = () => (
+        <div className="spooky-separator">
+            <svg
+                viewBox="0 0 1200 120"
+                preserveAspectRatio="none"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                {/* --- Brume (Plus claire et plus visible) --- */}
+                <path
+                    className="fog-layer"
+                    d="M0 120 L0 20 Q 300 60 600 20 Q 900 -10 1200 40 L 1200 120 Z"
+                    fill="#5D2490" /* Violet plus vif */
+                    fillOpacity="0.6" /* Plus opaque */
+                />
 
-    useHotkeys("ctrl+alt+x", (e) => {
-        e.preventDefault();
-        void logout();
-    }, {
-        enableOnFormTags: true
-    },[logout])
+                {/* Sol principal (Noir profond - Doit correspondre au footer) */}
+                <path
+                    d="M0 120 L0 80 Q 200 100 400 70 Q 700 30 1200 90 L 1200 120 Z"
+                    fill="#1a1a1a"
+                />
 
+                {/* --- Décors (Tombes plus claires pour le contraste) --- */}
+                <g fill="#333333" stroke="#444444" strokeWidth="1">
+                    {/* Croix gauche */}
+                    <rect x="150" y="40" width="10" height="40" />
+                    <rect x="135" y="50" width="40" height="10" />
+
+                    {/* Pierre tombale centrale */}
+                    <path d="M 580 80 L 580 50 A 20 20 0 0 1 620 50 L 620 80 Z" />
+
+                    {/* Croix droite penchée */}
+                    <g transform="rotate(10, 950, 60)">
+                        <rect x="945" y="30" width="8" height="40" />
+                        <rect x="930" y="40" width="38" height="8" />
+                    </g>
+                </g>
+
+                {/* --- Yeux rouges --- */}
+                <g fill="red" filter="drop-shadow(0 0 2px red)" className="blinking-eyes">
+                    <circle cx="350" cy="90" r="2" /> <circle cx="358" cy="90" r="2" />
+                    <circle cx="800" cy="60" r="1.5" /> <circle cx="806" cy="60" r="1.5" />
+                </g>
+
+                {/* --- Citrouille --- */}
+                <g transform="translate(1050, 85)">
+                    <ellipse cx="15" cy="10" rx="15" ry="12" fill="#FF7518" />
+                    <rect x="13" y="-2" width="4" height="6" fill="#4a6741" />
+                    <g fill="#FFD700" filter="drop-shadow(0 0 4px #FFD700)" className="candle-flicker">
+                        <polygon points="8,6 12,10 4,10" />
+                        <polygon points="22,6 26,10 18,10" />
+                        <path d="M 8 15 Q 15 20 22 15 L 20 18 Q 15 22 10 18 Z" />
+                    </g>
+                </g>
+            </svg>
+        </div>
+    );
     return (
         <div className="home-root">
             <Ghost/>
@@ -140,6 +197,7 @@ export const HomePage = () => {
                         </div>
                     )}
                 </section>
+                <SpookySeparator />
             </main>
         </div>
     );
