@@ -126,3 +126,12 @@ export const updateNote = async (
     throw new Error("Le sortilège de modification a échoué !");
   }
 };
+
+// 6. SUPPRESSION D'UNE NOTE
+export const deleteNote = async (id: number): Promise<void> => {
+  await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+};
