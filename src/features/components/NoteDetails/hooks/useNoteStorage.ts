@@ -13,21 +13,22 @@ import { useNavigate } from "react-router";
 export const useNoteStorage = (id: string | undefined, editor: Editor | null) => {
     const navigate = useNavigate();
 
-    // State Données
+    // Data State
     const [title, setTitle] = useState("");
     const [currentDirectoryId, setCurrentDirectoryId] = useState<number | null>(null);
     const [metadata, setMetadata] = useState<MetaDataDTO | null>(null);
     const [isMetaLoading, setIsMetaLoading] = useState(false);
     const [metaError, setMetaError] = useState<string | null>(null);
 
-    // State Sauvegarde
+    // Save State
     const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "dirty">("saved");
     const [sidebarKey, setSidebarKey] = useState(0);
 
-    // Refs pour comparaison
+    // Refs used to compare current content with the last saved version to avoid unnecessary API calls
     const lastSavedTitleRef = useRef<string>("");
     const lastSavedContentRef = useRef<string>("");
     const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Queue to handle sequential saves and prevent race conditions
     const savingQueueRef = useRef<Promise<void>>(Promise.resolve());
 
     // --- FETCH DATA ---
@@ -55,10 +56,10 @@ export const useNoteStorage = (id: string | undefined, editor: Editor | null) =>
             setCurrentDirectoryId(note.directoryId);
             lastSavedTitleRef.current = note.name;
 
+            // Convert Markdown from DB to HTML for the Tiptap editor
             const htmlContent = note.content ? marked.parse(note.content) : "";
 
-            // On retourne le contenu pour que l'éditeur puisse l'utiliser
-            // (On ne peut pas setContent ici car 'editor' peut être null au premier render)
+            // Return content instead of setting it directly to handle editor initialization timing
             fetchMetadata();
             return { htmlContent, contentRaw: note.content };
         } catch (err) {
@@ -74,19 +75,21 @@ export const useNoteStorage = (id: string | undefined, editor: Editor | null) =>
     const saveNow = async () => {
         if (!editor || !id) return;
 
-        // Vérif vide
+        // Prevent saving empty notes if that's a business rule (or just update UI status)
         if (editor.getText().trim().length === 0) {
             setSaveStatus("dirty");
             return;
         }
 
         const html = editor.getHTML();
+        // Convert HTML back to Markdown for storage
         const turndownService = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
         const markdown = turndownService.turndown(html);
 
         const titleChanged = title !== lastSavedTitleRef.current;
         const contentChanged = markdown !== lastSavedContentRef.current;
 
+        // Optimization: Do nothing if no changes detected
         if (!titleChanged && !contentChanged) {
             setSaveStatus("saved");
             return;
@@ -94,15 +97,19 @@ export const useNoteStorage = (id: string | undefined, editor: Editor | null) =>
 
         setSaveStatus("saving");
 
+        // Chain save requests to ensure order (FIFO)
         savingQueueRef.current = savingQueueRef.current
-            .catch(() => {})
+            .catch(() => {}) // Ignore previous errors to keep the queue moving
             .then(async () => {
                 try {
                     await updateNote(Number(id), { name: title, content: markdown });
+
+                    // Update refs only after successful save
                     lastSavedTitleRef.current = title;
                     lastSavedContentRef.current = markdown;
+
                     setSaveStatus("saved");
-                    setSidebarKey((prev) => prev + 1); // Refresh sidebar
+                    setSidebarKey((prev) => prev + 1); // Trigger sidebar refresh (e.g. if title changed)
                     await fetchMetadata(true);
                 } catch (err) {
                     console.error("Erreur save:", err);
@@ -113,18 +120,22 @@ export const useNoteStorage = (id: string | undefined, editor: Editor | null) =>
         await savingQueueRef.current;
     };
 
+    // Debounce logic for autosave
     const scheduleAutosave = (delay = 1500) => {
         if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
         autosaveTimeoutRef.current = setTimeout(() => saveNow(), delay);
     };
 
-    // --- LOCAL METADATA UPDATE (Compteur mots temps réel) ---
+    // --- LOCAL METADATA UPDATE (Real-time word count) ---
     useEffect(() => {
         if (!editor) return;
         const updateLocalMeta = () => {
             const plain = editor.getText();
             const countWords = (text: string) => (text.trim().match(/\S+/g) || []).length;
+            // Calculate approximate byte size of HTML content
             const byteSize = new Blob([editor.getHTML()]).size;
+
+            // Optimistically update metadata in UI without waiting for backend
             setMetadata((prev) =>
                 prev ? { ...prev, characterCount: plain.length, wordCount: countWords(plain), byteSize } : prev
             );

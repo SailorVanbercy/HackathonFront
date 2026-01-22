@@ -1,7 +1,7 @@
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 
-// Configuration de l'extension Link personnalisée
+// Custom Link Extension Configuration
 export const getEditorExtensions = () => {
     const CustomLink = Link.extend({
         addAttributes() {
@@ -14,10 +14,12 @@ export const getEditorExtensions = () => {
                     default: null,
                     parseHTML: (element) => element.getAttribute("target"),
                     renderHTML: (attributes) => {
-                        // Logique intelligente : Interne vs Externe
+                        // Smart Logic: Internal vs External
+                        // If link points to our internal route, do not open in new tab
                         if (attributes.href && attributes.href.startsWith("/note/")) {
-                            return {}; // Pas de target pour l'interne (géré par le router)
+                            return {}; // No target for internal links (handled by router)
                         }
+                        // Force external links to open in a new tab for security and UX
                         return {
                             target: "_blank",
                             rel: "noopener noreferrer",
@@ -31,7 +33,7 @@ export const getEditorExtensions = () => {
     return [
         StarterKit,
         CustomLink.configure({
-            openOnClick: false, // On gère le clic nous-mêmes
+            openOnClick: false, // We handle clicks manually (see NoteDetails.tsx) to use React Router
             autolink: true,
         }),
     ];

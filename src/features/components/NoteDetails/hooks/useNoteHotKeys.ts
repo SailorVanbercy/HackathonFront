@@ -34,26 +34,27 @@ export const useNoteHotkeys = ({
                                    setShowErrorPopup,
                                    refreshSidebar,
                                }: UseNoteHotkeysProps) => {
+    // Configuration ensuring hotkeys work inside form inputs and contentEditable (the editor)
     const config = { enableOnFormTags: true, enableOnContentEditable: true };
     const configPrevent = { ...config, preventDefault: true };
 
-    // --- REFS POUR LE COOLDOWN ---
+    // --- REFS FOR COOLDOWN ---
     const lastDuplicationRef = useRef<number>(0);
 
-    // --- ACTIONS GLOBALES ---
+    // --- GLOBAL ACTIONS ---
     useHotkeys("alt+v", (e) => { e.preventDefault(); setIsReadOnly(!isReadOnly); }, configPrevent);
     useHotkeys("alt+i", (e) => { e.preventDefault(); toggleInfoModal(); }, configPrevent);
     useHotkeys("ctrl+enter", (e) => { e.preventDefault(); navigate("/home"); }, configPrevent);
 
-    // --- FORMATAGE BASIQUE ---
+    // --- BASIC FORMATTING ---
     useHotkeys("alt+x", (e) => { e.preventDefault(); editor?.chain().focus().unsetAllMarks().clearNodes().run(); }, configPrevent);
 
-    // --- LISTES ---
+    // --- LISTS ---
     useHotkeys("alt+l", (e) => { e.preventDefault(); editor?.chain().focus().toggleBulletList().run(); }, configPrevent);
     useHotkeys("alt+k", (e) => { e.preventDefault(); editor?.chain().focus().toggleOrderedList().run(); }, configPrevent);
 
 
-    // --- TITRES ---
+    // --- HEADINGS ---
     useHotkeys("ctrl+alt+1", (e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 1 }).run(); }, configPrevent);
     useHotkeys("ctrl+alt+2", (e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 2 }).run(); }, configPrevent);
     useHotkeys("ctrl+alt+3", (e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 3 }).run(); }, configPrevent);
@@ -61,7 +62,7 @@ export const useNoteHotkeys = ({
     useHotkeys("ctrl+alt+5", (e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 5 }).run(); }, configPrevent);
     useHotkeys("ctrl+alt+6", (e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 6 }).run(); }, configPrevent);
 
-    // --- BLOCS SPECIAUX ---
+    // --- SPECIAL BLOCKS ---
     useHotkeys("alt+o", (e) => { e.preventDefault(); editor?.chain().focus().setHorizontalRule().run(); }, configPrevent);
 
     useHotkeys("alt+j", (e) => { e.preventDefault(); editor?.chain().focus().toggleBlockquote().run(); }, configPrevent);
@@ -71,9 +72,9 @@ export const useNoteHotkeys = ({
 
     useHotkeys("alt+r", (e) => { e.preventDefault(); editor?.chain().focus().toggleCode().run(); }, configPrevent);
 
-    // --- FONCTIONS AVANCEES ---
+    // --- ADVANCED FUNCTIONS ---
 
-    // Horodatage
+    // Timestamp Insertion
     useHotkeys("alt+h", (e) => {
         e.preventDefault();
         if (!editor) return;
@@ -84,28 +85,28 @@ export const useNoteHotkeys = ({
         editor.chain().focus().insertContent(` ${formattedDate} ${timeStr} `).run();
     }, configPrevent);
 
-    // Duplication de note (ALT + Y) AVEC COOLDOWN
+    // Note Duplication (ALT + Y) WITH COOLDOWN
     useHotkeys("alt+y", async (e) => {
         e.preventDefault();
         if (!editor || !id) return;
 
-        // 1. VÉRIFICATION DU COOLDOWN (2.5 secondes)
+        // 1. CHECK COOLDOWN (2.5 seconds) to prevent accidental double-cloning
         const now = Date.now();
         if (now - lastDuplicationRef.current < 2500) {
             console.log("⏳ Duplication en cooldown...");
             return;
         }
-        lastDuplicationRef.current = now; // Mise à jour du timestamp
+        lastDuplicationRef.current = now; // Update timestamp
 
         setSaveStatus("saving");
 
         try {
-            // 2. Préparer le contenu
+            // 2. Prepare content (convert HTML back to Markdown)
             const html = editor.getHTML();
             const turndownService = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
             const markdown = turndownService.turndown(html);
 
-            // 3. Récupérer les notes voisines
+            // 3. Fetch siblings to calculate unique name
             let siblings: { name: string }[] = [];
             try {
                 if (currentDirectoryId) {
@@ -119,7 +120,7 @@ export const useNoteHotkeys = ({
                 console.warn("Impossible de lister les frères pour le renommage, fallback.", e  );
             }
 
-            // 4. Calculer le nouveau titre (Nom(1), Nom(2)...)
+            // 4. Calculate new title pattern: Name(1), Name(2)...
             const match = title.match(/^(.*)\((\d+)\)$/);
             let baseName = title;
             let startCounter = 1;
@@ -131,12 +132,13 @@ export const useNoteHotkeys = ({
 
             let newTitle = `${baseName}(${startCounter})`;
             let counter = startCounter;
+            // Ensure uniqueness in the current list
             while (siblings.some(n => n.name === newTitle)) {
                 counter++;
                 newTitle = `${baseName}(${counter})`;
             }
 
-            // 5. Création et Mise à jour
+            // 5. Create and Update
             const newNote = await createNote({ name: newTitle, directoryId: currentDirectoryId });
             await updateNote(newNote.id, { name: newTitle, content: markdown });
 
