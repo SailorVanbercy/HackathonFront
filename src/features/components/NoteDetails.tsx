@@ -40,10 +40,8 @@ const NoteDetails = () => {
 
   // États existants
   const [title, setTitle] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const [showSavePopup, setShowSavePopup] = useState(false);
 
   // Popup d'erreur personnalisée
   const [showErrorPopup, setShowErrorPopup] = useState(false);
@@ -277,22 +275,6 @@ const NoteDetails = () => {
         }
     };
 
-    useHotkeys('ctrl+s', (e) => {
-        e.preventDefault(); // Bloque la sauvegarde du navigateur
-        void handleSaveContent();
-    }, {
-        enableOnFormTags: true,        // Marche quand on tape le titre
-        enableOnContentEditable: true, // Marche quand on tape dans la note
-        preventDefault: true
-    }, [handleSaveContent]);
-    useHotkeys('alt+r', (e) => {
-        e.preventDefault(); // Bloque la sauvegarde du navigateur
-        void handleDelete();
-    }, {
-        enableOnFormTags: true,        // Marche quand on tape le titre
-        enableOnContentEditable: true, // Marche quand on tape dans la note
-        preventDefault: true
-    }, [handleSaveContent]);
 
     useHotkeys('alt+v', (e) => {
         e.preventDefault();
