@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from "@tiptap/react";
+import {useEditor, EditorContent} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import TurndownService from "turndown";
@@ -7,7 +7,6 @@ import { useNavigate, useParams } from "react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./NoteDetails.css";
 import {
-  deleteNote,
   getNoteById,
   updateNote,
   getMetaData,
@@ -16,7 +15,6 @@ import {
 import Sidebar from "./SideBar/sidebar";
 import type { MetaDataDTO } from "../services/notes/noteService";
 import { useHotkeys } from "react-hotkeys-hook";
-import {useSidebarModals} from "./SideBar/hooks/useSidebarModals.ts";
 
 // --- Types ---
 type NoteSummary = { id: number; name: string };
@@ -46,7 +44,6 @@ const formatBytes = (bytes: number, decimals = 1) => {
 };
 
 const NoteDetails = () => {
-    const modals = useSidebarModals();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -73,8 +70,8 @@ const NoteDetails = () => {
   }, [navigate]);
 
   // Popup d'erreur
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [showErrorPopup] = useState(false);
+  const [errorMessage] = useState("");
 
   // Metadata
   const [metadata, setMetadata] = useState<MetaDataDTO | null>(null);
@@ -146,8 +143,7 @@ const NoteDetails = () => {
       },
 
       // Le gestionnaire devient très simple et ne gère QUE l'interne
-      handleClick: (view, pos, event) => {
-        const isReadMode = isReadOnlyRef.current;
+      handleClick: (_view, _pos, event) => {
         const target = event.target as HTMLElement;
         const link = target.closest("a");
 
@@ -382,18 +378,6 @@ const NoteDetails = () => {
     scheduleAutosave();
   }, [title]);
 
-  // --- ACTIONS DIVERSES ---
-
-  const handleDelete = async () => {
-    try {
-      await deleteNote(Number(id));
-      navigate("/home");
-    } catch {
-      setErrorMessage("Erreur lors de la suppression de la note !");
-      setShowErrorPopup(true);
-    }
-  };
-
   // Hotkeys
   useHotkeys(
     "alt+v",
@@ -431,6 +415,146 @@ const NoteDetails = () => {
       preventDefault: true,
     },
   );
+
+    // 4. (ALT + -) -> Insère une ligne de séparation
+    useHotkeys(
+        "alt+o", // C'est le tiret du 6
+        (e) => {
+            e.preventDefault();
+            if (!editor) return;
+            editor.chain().focus().setHorizontalRule().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+
+    // 5. (ALT + Q) -> Citation (Quote)
+    useHotkeys(
+        "alt+j",
+        (e) => {
+            e.preventDefault();
+            if (!editor) return;
+            editor.chain().focus().toggleBlockquote().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+
+    // 6. (ALT + S) -> Texte Barré (Strike)
+    useHotkeys(
+        "alt+s",
+        (e) => {
+            e.preventDefault();
+            if (!editor) return;
+            editor.chain().focus().toggleStrike().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+
+    // 7. (ALT + C) -> Bloc de Code
+    useHotkeys(
+        "alt+c",
+        (e) => {
+            e.preventDefault();
+            if (!editor) return;
+            editor.chain().focus().toggleCodeBlock().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    // (ALT + X) -> enlever le formatage markdown
+    useHotkeys(
+        "alt+x",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().unsetAllMarks().clearNodes().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    // (ALT + L) -> insertion d'une liste à puce
+    useHotkeys(
+        "alt+l",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleBulletList().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    // (ALT + K) -> insertion d'une liste ordonée
+    useHotkeys(
+        "alt+k",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleOrderedList().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    // (ALT + L) -> insertion d'une liste à puce
+    useHotkeys(
+        "alt+r",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleCode().run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    useHotkeys(
+        "ctrl+alt+1",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleHeading({level : 1}).run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    useHotkeys(
+        "ctrl+alt+2",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleHeading({level : 2}).run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    useHotkeys(
+        "ctrl+alt+3",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleHeading({level : 3}).run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    useHotkeys(
+        "ctrl+alt+4",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleHeading({level : 4}).run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    useHotkeys(
+        "ctrl+alt+5",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleHeading({level : 5}).run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+    useHotkeys(
+        "ctrl+alt+6",
+        (e) => {
+            e.preventDefault();
+            if(!editor)return;
+            editor.chain().focus().toggleHeading({level : 6}).run();
+        },
+        { enableOnFormTags: true, enableOnContentEditable: true }
+    );
+
+
 
 
   if (!editor) return null;
@@ -580,6 +704,42 @@ const NoteDetails = () => {
             <div className="guide-item">
               <span>*Italique*</span> <span>Ctrl+I</span>
             </div>
+              <div className="guide-item">
+                  <span>*Changement de mode*</span> <span>ALT+V</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Afficher menu info*</span> <span>ALT+I</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Revenir au menu principal*</span> <span>Ctrl+Enter</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Barre de délimitation*</span> <span>ALT+O</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Ajouter une citation*</span> <span>ALT+J</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Barrer le texte*</span> <span>ALT+S</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Ajouter un bloc de code*</span> <span>ALT+C</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Déformater le texte*</span> <span>ALT+X</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Insérer une liste à puce*</span> <span>ALT+L</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Insérer une liste ordonnée*</span> <span>ALT+K</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Transformer la selection en code*</span> <span>ALT+R</span>
+              </div>
+              <div className="guide-item">
+                  <span>*Insertion d'un titre (H1 à H6)*</span> <span>CTRL+ALT+(1,6)</span>
+              </div>
             <button
               className="close-modal-btn"
               onClick={() => setShowInfoModal(false)}

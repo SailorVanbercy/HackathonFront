@@ -114,7 +114,7 @@ export const createNote = async (
 export const updateNote = async (
     id: number,
     req: UpdateNoteRequest,
-): Promise<MetaDataDTO> => {
+): Promise<void> => {
     const response = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -127,9 +127,6 @@ export const updateNote = async (
             throw new Error("Vous n'avez pas le droit de modifier ce parchemin");
         throw new Error("Le sortilège de modification a échoué !");
     }
-
-    // On retourne directement l'objet JSON reçu (MetaDataDTO)
-    return await response.json();
 };
 
 // 6. SUPPRESSION D'UNE NOTE
