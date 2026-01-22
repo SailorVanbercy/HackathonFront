@@ -7,75 +7,61 @@ import {
 import { createNote } from "../../../services/notes/noteService";
 import {
   exportAsZip,
+    exportDirAsZip,
   exportNoteAsPdf,
   exportNoteAsMarkdown,
 } from "../../../services/export/exportService";
 import type { UseSidebarModalsType } from "./useSidebarModals";
 import { deleteNote } from "../../../services/notes/noteService";
-
 interface UseSidebarActionsProps {
-  refreshTree: () => Promise<void>;
-  modals: UseSidebarModalsType;
-  setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+    refreshTree: () => Promise<void>;
+    modals: UseSidebarModalsType;
+    setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
-export const useSidebarActions = ({
-  refreshTree,
-  modals,
-  setExpanded,
-}: UseSidebarActionsProps) => {
-  // --- CREATE FOLDER ---
-  const handleCreateFolder = useCallback(
-    async (name: string, parentId: number | null) => {
-      try {
-        await createDirectory({ name, parentDirectoryId: parentId });
-        if (parentId !== null && parentId !== 0) {
-          setExpanded((prev) => ({ ...prev, [`dir-${parentId}`]: true }));
-        }
-        await refreshTree();
-      } catch (error) {
-        console.error("Erreur création dossier", error);
-      }
-    },
-    [refreshTree, setExpanded],
-  );
+export const useSidebarActions = ({ refreshTree, modals, setExpanded }: UseSidebarActionsProps) => {
 
-  // --- CREATE NOTE (CORRIGÉ) ---
-  // Suppression du paramètre content qui n'est pas utilisé par l'API createNote
-  const handleCreateNote = useCallback(
-    async (name: string, directoryId: number) => {
-      try {
-        await createNote({ name, directoryId });
-
-        if (directoryId !== 0) {
-          setExpanded((prev) => ({ ...prev, [`dir-${directoryId}`]: true }));
+    // --- CREATE FOLDER ---
+    const handleCreateFolder = useCallback(async (name: string, parentId: number | null) => {
+        try {
+            await createDirectory({ name, parentDirectoryId: parentId });
+            if (parentId !== null && parentId !== 0) {
+                setExpanded((prev) => ({ ...prev, [`dir-${parentId}`]: true }));
+            }
+            await refreshTree();
+        } catch (error) {
+            console.error("Erreur création dossier", error);
         }
-        await refreshTree();
-      } catch (error) {
-        console.error("Erreur création note", error);
-      }
-    },
-    [refreshTree, setExpanded],
-  );
+    }, [refreshTree, setExpanded]);
 
-  // --- RENAME (Inchangé) ---
-  const handleRenameSubmit = useCallback(
-    async (_unusedId: string, newName: string) => {
-      const id = modals.targetRenameId;
-      if (!id) return;
-      try {
-        const cleanId = String(id).replace("dir-", "").replace("note-", "");
-        if (id.startsWith("dir-")) {
-          await updateDirectory({ id: Number(cleanId), name: newName });
+    // --- CREATE NOTE (CORRIGÉ) ---
+    // Suppression du paramètre content qui n'est pas utilisé par l'API createNote
+    const handleCreateNote = useCallback(async (name: string, directoryId: number) => {
+        try {
+            await createNote({ name, directoryId });
+
+            if (directoryId !== 0) {
+                setExpanded((prev) => ({ ...prev, [`dir-${directoryId}`]: true }));
+            }
+            await refreshTree();
+        } catch (error) {
+            console.error("Erreur création note", error);
         }
-        await refreshTree();
-        modals.setIsRenameOpen(false);
-      } catch (error) {
-        console.error(error);
-      }
-    },
-    [refreshTree, modals],
-  );
+    }, [refreshTree, setExpanded]);
+
+    // --- RENAME (Inchangé) ---
+    const handleRenameSubmit = useCallback(async (_unusedId: string, newName: string) => {
+        const id = modals.targetRenameId;
+        if (!id) return;
+        try {
+            const cleanId = String(id).replace("dir-", "").replace("note-", "");
+            if (id.startsWith("dir-")) {
+                await updateDirectory({ id: Number(cleanId), name: newName });
+            }
+            await refreshTree();
+            modals.setIsRenameOpen(false);
+        } catch (error) { console.error(error); }
+    }, [refreshTree, modals]);
 
   // --- DELETE (Inchangé) ---
   const handleDeleteConfirm = useCallback(async () => {
@@ -95,38 +81,34 @@ export const useSidebarActions = ({
     }
   }, [modals.targetDeleteId, refreshTree, modals]);
 
-  // --- EXPORT (Inchangé) ---
-  const handleExportConfirm = useCallback(
-    async (format: "zip" | "pdf" | "md") => {
-      const id = modals.targetExportId;
-      const name = modals.exportTargetName || "Grimoire_Item";
-      const type = modals.exportItemType;
-      const cleanId = id
-        ? String(id).replace("dir-", "").replace("note-", "")
-        : null;
-      const numId = cleanId ? Number(cleanId) : null;
+    // --- EXPORT (Inchangé) ---
+    const handleExportConfirm = useCallback(async (format: 'zipAll' | 'zipDir' | 'pdf' | 'md') => {
+        const id = modals.targetExportId;
+        const name = modals.exportTargetName || "Grimoire_Item";
+        const type = modals.exportItemType;
+        const cleanId = id ? String(id).replace("dir-", "").replace("note-", "") : null;
+        const numId = cleanId ? Number(cleanId) : null;
 
-      try {
-        if (type === "directory") {
-          if (format === "zip") await exportAsZip(name);
-        } else if (type === "note" && numId !== null) {
-          if (format === "pdf") await exportNoteAsPdf(name, numId);
-          else if (format === "md") await exportNoteAsMarkdown(name, numId);
+        try {
+            if (type === 'directory') {
+                if (format === 'zipAll') await exportAsZip();
+                else if (format === 'zipDir') await exportDirAsZip(name, numId);
+            } else if (type === 'note' && numId !== null) {
+                if (format === 'pdf') await exportNoteAsPdf(name, numId);
+                else if (format === 'md') await exportNoteAsMarkdown(name, numId);
+            }
+            modals.setIsExportOpen(false);
+        } catch (error) {
+            console.error("Erreur export", error);
+            alert("Échec de l'exportation");
         }
-        modals.setIsExportOpen(false);
-      } catch (error) {
-        console.error("Erreur export", error);
-        alert("Échec de l'exportation");
-      }
-    },
-    [modals],
-  );
+    }, [modals]);
 
-  return {
-    handleCreateFolder,
-    handleCreateNote,
-    handleRenameSubmit,
-    handleDeleteConfirm,
-    handleExportConfirm,
-  };
+    return {
+        handleCreateFolder,
+        handleCreateNote,
+        handleRenameSubmit,
+        handleDeleteConfirm,
+        handleExportConfirm
+    };
 };

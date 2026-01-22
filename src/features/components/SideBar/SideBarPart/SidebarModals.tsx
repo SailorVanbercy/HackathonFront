@@ -180,7 +180,7 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, onCon
     );
 };
 
-interface ExportModalProps extends CommonModalProps { onConfirm: (f: 'zip' | 'pdf' | 'md') => void; folderName?: string; itemType: 'directory' | 'note'; }
+interface ExportModalProps extends CommonModalProps { onConfirm: (f: 'zipAll' | 'zipDir' | 'pdf' | 'md') => void; folderName?: string; itemType: 'directory' | 'note'; }
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, folderName, itemType }) => {
     useModalShortcut(isOpen, onClose);
     return (
@@ -190,9 +190,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onCon
                     <h2 className="modal-title">Exporter {folderName}</h2>
                     <div className="export-options">
                         {itemType === 'directory' && (
-                            <div className="export-card" onClick={() => onConfirm('zip')}>
+                            <div className="export-card" onClick={() => onConfirm('zipAll')}>
                                 <div className="export-icon">📦</div>
                                 <div className="export-info"><h4>Archive ZIP</h4><p>Tout le contenu</p></div>
+                            </div>
+                        )}{itemType === 'directory' && (
+                            <div className="export-card" onClick={() => onConfirm('zipDir')}>
+                                <div className="export-icon">📦</div>
+                                <div className="export-info"><h4>Archive ZIP du dossier actuel</h4><p>Tout le contenu du dossier actuel</p></div>
                             </div>
                         )}
                         {itemType === 'note' && (
