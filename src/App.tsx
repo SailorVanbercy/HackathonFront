@@ -6,7 +6,7 @@ import RegisterPage from "./features/layout/register/RegisterPage.tsx";
 import HomePage from "./features/layout/home/HomePage.tsx";
 import Footer from "./features/components/Footer/Footer.tsx";
 import { GiTorch } from "react-icons/gi";
-import NoteDetails from "./features/components/NoteDetails.tsx";
+import NoteDetails from "./features/components/NoteDetails/NoteDetails.tsx";
 import { RequireAuth } from "./shared/utils/RequireAuth.tsx";
 import NotFoundPage from "./features/layout/notFound/NotFound.tsx";
 
