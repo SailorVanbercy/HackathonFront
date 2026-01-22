@@ -507,3 +507,24 @@
         animation: none;
     }
 }
+
+.save-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.3);
+}
+
+.save-indicator.dirty {
+    background-color: #ff4d4d;
+}
+
+.save-indicator.saving {
+    background-color: #ffcc00;
+}
+
+.save-indicator.saved {
+    background-color: #2ecc71;
+}
