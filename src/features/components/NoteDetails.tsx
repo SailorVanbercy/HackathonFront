@@ -16,6 +16,7 @@ import {
 import Sidebar from "./SideBar/sidebar";
 import type { MetaDataDTO } from "../services/notes/noteService";
 import { useHotkeys } from "react-hotkeys-hook";
+import {useSidebarModals} from "./SideBar/hooks/useSidebarModals.ts";
 
 // --- Types ---
 type NoteSummary = { id: number; name: string };
@@ -45,6 +46,7 @@ const formatBytes = (bytes: number, decimals = 1) => {
 };
 
 const NoteDetails = () => {
+    const modals = useSidebarModals();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -263,6 +265,15 @@ const NoteDetails = () => {
   const openLinkModal = useCallback(async () => {
     if (!editor) return;
     const previousUrl = editor.getAttributes("link").href || "";
+    if(previousUrl.startsWith("/note/")) {
+        setExternalUrl("");
+        const internalId = previousUrl.replace("/note/", "");
+        setSelectedNoteId(internalId);
+    }
+    else{
+        setExternalUrl(previousUrl);
+        setSelectedNoteId("");
+    }
     setExternalUrl(previousUrl);
     setSelectedNoteId("");
 
@@ -417,6 +428,7 @@ const NoteDetails = () => {
       preventDefault: true,
     },
   );
+
 
   if (!editor) return null;
 

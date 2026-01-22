@@ -9,6 +9,7 @@ import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import {useHotkeys} from "react-hotkeys-hook";
+import {useNavigate} from "react-router";
 
 export interface SidebarHandle {
     openCreateModal: () => void;
@@ -24,6 +25,7 @@ const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
+    let navigate = useNavigate();
     // État de recherche
     const [search, setSearch] = useState("");
 
@@ -128,21 +130,21 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
     useHotkeys('alt+n', (e) => {
         e.preventDefault();
         modals.openCreateModal('note', null);
-    }, {enableOnFormTags: true, preventDefault: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault: true}, [modals]);
     useHotkeys('alt+d', (e) => {
         e.preventDefault();
         modals.openCreateModal('directory', null);
-    }, {enableOnFormTags: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault:true}, [modals]);
     useHotkeys('alt+t', (e) => {
         e.preventDefault();
         toggleCollapse();
-    }, {enableOnFormTags: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault:true}, [modals]);
 
     // MODIFIÉ : Alt+G ouvre maintenant l'export en mode global (4ème paramètre = true)
     useHotkeys('alt+g', (e) => {
         e.preventDefault();
         modals.openExportModal(null, undefined, 'directory', true);
-    }, {enableOnFormTags: true}, [modals]);
+    }, {enableOnFormTags: true,enableOnContentEditable:true, preventDefault:true}, [modals]);
 
 
     return (
@@ -158,7 +160,7 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
                         {/* --- NOUVELLE GRILLE DE HEADER --- */}
                         <div className="sidebar-grid">
                             {/* 1. Bouton Home */}
-                            <button className="sidebar-home-btn" title="Accueil">
+                            <button className="sidebar-home-btn" title="Accueil" onClick={() => navigate(("/home"))}>
                                 <span className="home-icon"><GiHouse size={20} /></span>
                             </button>
 
