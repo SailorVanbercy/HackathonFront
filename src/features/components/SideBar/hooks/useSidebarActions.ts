@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { createDirectory, updateDirectory, deleteDirectory } from '../../../services/directories/directoryService';
 import { createNote } from '../../../services/notes/noteService';
-import { exportAsZip, exportNoteAsPdf, exportNoteAsMarkdown } from '../../../services/export/exportService';
+import { exportAsZip, exportNoteAsPdf, exportNoteAsMarkdown, exportDirAsZip } from '../../../services/export/exportService';
 import type { UseSidebarModalsType } from './useSidebarModals';
 
 interface UseSidebarActionsProps {
@@ -69,7 +69,7 @@ export const useSidebarActions = ({ refreshTree, modals, setExpanded }: UseSideb
     }, [modals.targetDeleteId, refreshTree, modals]);
 
     // --- EXPORT (Inchangé) ---
-    const handleExportConfirm = useCallback(async (format: 'zip' | 'pdf' | 'md') => {
+    const handleExportConfirm = useCallback(async (format: 'zipAll' | 'zipDir' | 'pdf' | 'md') => {
         const id = modals.targetExportId;
         const name = modals.exportTargetName || "Grimoire_Item";
         const type = modals.exportItemType;
@@ -78,7 +78,8 @@ export const useSidebarActions = ({ refreshTree, modals, setExpanded }: UseSideb
 
         try {
             if (type === 'directory') {
-                if (format === 'zip') await exportAsZip(name);
+                if (format === 'zipAll') await exportAsZip();
+                else if (format === 'zipDir') await exportDirAsZip(name, numId);
             } else if (type === 'note' && numId !== null) {
                 if (format === 'pdf') await exportNoteAsPdf(name, numId);
                 else if (format === 'md') await exportNoteAsMarkdown(name, numId);

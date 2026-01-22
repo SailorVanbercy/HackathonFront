@@ -15,7 +15,7 @@ const fetchNoteContent = async (noteId: number): Promise<string> => {
 };
 
 // --- EXPORT DOSSIER (ZIP via Backend) ---
-export const exportAsZip = async (directoryName: string) => {
+export const exportAsZip = async () => {
     try {
         // Appel au backend pour générer le ZIP.
         // L'endpoint /zip/me exporte le dossier racine de l'utilisateur courant.
@@ -29,12 +29,33 @@ export const exportAsZip = async (directoryName: string) => {
         }
 
         const blob = await response.blob();
-        saveAs(blob, `${directoryName}.zip`);
+        saveAs(blob, `archive.zip`);
     } catch (error) {
         console.error("Échec export ZIP", error);
         throw error;
     }
 };
+export const exportDirAsZip = async (directoryName: string, dirId : number | null) => {
+   try {
+       if(dirId === null){
+           throw new Error("L'id ne peut être null");
+       }
+       // Appel backend
+       const response = await fetch(`${API_URL}/zip/${dirId}`, {
+           method: 'GET',
+           credentials: 'include',
+       });
+       if (!response.ok) {
+           throw new Error("Echec du téléchargement du ZIP depuis le serveur");
+       }
+       const blob = await response.blob();
+       saveAs(blob, `archive_${directoryName}.zip`);
+   }catch (e) {
+       console.error("Echec export ZIP",e);
+       throw e;
+   }
+
+}
 
 // --- EXPORT NOTE (PDF via Backend) ---
 export const exportNoteAsPdf = async (noteName: string, noteId: number) => {
