@@ -9,6 +9,7 @@ import { CreateFolderModal, CreateNoteModal, RenameModal, DeleteModal, ExportMod
 import { useSidebarTree } from "./hooks/useSidebarTree";
 import { useSidebarModals, type CreationType } from "./hooks/useSidebarModals";
 import { useSidebarActions } from "./hooks/useSidebarActions";
+import {useHotkeys} from "react-hotkeys-hook";
 
 export interface SidebarHandle {
     openCreateModal: () => void;
@@ -126,6 +127,26 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
             window.removeEventListener("mouseup", onUp);
         };
     }, []);
+
+    // Raccourcis clavier
+    //création d'une note à la racine
+    useHotkeys('alt+n', (e) => {
+        e.preventDefault();
+        modals.openCreateModal('note', null);
+    }, {enableOnFormTags: true, preventDefault: true}, [modals]);
+    useHotkeys('alt+d', (e) => {
+        e.preventDefault();
+        modals.openCreateModal('directory', null);
+    }, {enableOnFormTags: true}, [modals]);
+    useHotkeys('alt+t', (e) => {
+        e.preventDefault();
+        toggleCollapse();
+    }, {enableOnFormTags: true}, [modals]);
+    useHotkeys('alt+g', (e) => {
+        e.preventDefault();
+        modals.openExportModal(null, 'directory');
+    }, {enableOnFormTags: true}, [modals]);
+
 
     return (
         <>

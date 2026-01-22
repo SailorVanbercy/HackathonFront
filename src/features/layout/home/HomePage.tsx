@@ -6,6 +6,7 @@ import { Ghost } from "../../components/Ghost/Ghost";
 import { Bats } from "../../components/Bats/Bats";
 import './HomePage.css';
 import {useNavigate} from "react-router";
+import {useHotkeys} from "react-hotkeys-hook";
 
 interface NoteDisplay extends NoteTreeItemDTO {
     updatedAt?: string;
@@ -68,6 +69,13 @@ export const HomePage = () => {
         if (diffDays === 1) return { label: "Hier", icon: "🔮" };
         return { label: formatDate(note.updatedAt || note.createdAt), icon: "🕯️" };
     };
+
+    useHotkeys("ctrl+alt+x", (e) => {
+        e.preventDefault();
+        void logout();
+    }, {
+        enableOnFormTags: true
+    },[logout])
 
     return (
         <div className="home-root">

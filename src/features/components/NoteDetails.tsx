@@ -12,6 +12,7 @@ import {
   updateNote,
 } from "../services/notes/noteService";
 import Sidebar from "./SideBar/sidebar";
+import {useHotkeys} from "react-hotkeys-hook";
 
 const NoteDetails = () => {
   const { id } = useParams();
@@ -113,57 +114,52 @@ const NoteDetails = () => {
   }, []);
 
   // Vérifie si le contenu éditeur est vide (ignore les balises/espaces)
-  const isEditorContentEmpty = () => {
-    if (!editor) return true;
-    const plainText = editor.getText().trim(); // TipTap fournit le texte brut sans balises
-    return plainText.length === 0;
-  };
+    const isEditorContentEmpty = useCallback(() => {
+        if (!editor) return true;
+        const plainText = editor.getText().trim();
+        return plainText.length === 0;
+    }, [editor]);
 
-  const handleSaveContent = async () => {
-    if (!editor) return;
+    const handleSaveContent = useCallback(async () => {
+        if (!editor) return;
 
-    // Empêche une nouvelle sauvegarde si cooldown actif
-    if (isCooldown) return;
+        // Empêche une nouvelle sauvegarde si cooldown actif
+        if (isCooldown) return;
 
-    // ⛔ Validation : contenu vide → popup d'erreur, on stoppe tout
-    if (isEditorContentEmpty()) {
-      setErrorMessage("Invocation raté : le contenu de la page est vide.");
-      setShowErrorPopup(true);
-      setTimeout(() => setShowErrorPopup(false), 3000); // auto-hide après 3s
-      return;
-    }
+        // Validation
+        if (isEditorContentEmpty()) {
+            setErrorMessage("Invocation ratée : le contenu de la page est vide.");
+            setShowErrorPopup(true);
+            setTimeout(() => setShowErrorPopup(false), 3000);
+            return;
+        }
 
-    setIsSaving(true);
+        setIsSaving(true);
 
-    const html = editor.getHTML();
-    const turndownService = new TurndownService({
-      headingStyle: "atx",
-      codeBlockStyle: "fenced",
-    });
-    const markdown = turndownService.turndown(html);
+        const html = editor.getHTML();
+        const turndownService = new TurndownService({
+            headingStyle: "atx",
+            codeBlockStyle: "fenced",
+        });
+        const markdown = turndownService.turndown(html);
 
-    try {
-      // Mise à jour de la note en base de données
-      await updateNote(Number(id), { name: title, content: markdown });
+        try {
+            await updateNote(Number(id), { name: title, content: markdown });
 
-      // Popup succès
-      setShowSavePopup(true);
-      setTimeout(() => setShowSavePopup(false), 3000);
+            setShowSavePopup(true);
+            setTimeout(() => setShowSavePopup(false), 3000);
 
-      // Rafraîchir la Sidebar immédiatement
-      setSidebarKey((prev) => prev + 1);
-
-      // Démarrer le cooldown de 2.5s
-      startCooldown();
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("Une erreur est survenue lors de l'enregistrement.");
-      setShowErrorPopup(true);
-      setTimeout(() => setShowErrorPopup(false), 3500);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+            setSidebarKey((prev) => prev + 1);
+            startCooldown();
+        } catch (error) {
+            console.error(error);
+            setErrorMessage("Une erreur est survenue lors de l'enregistrement.");
+            setShowErrorPopup(true);
+            setTimeout(() => setShowErrorPopup(false), 3500);
+        } finally {
+            setIsSaving(false);
+        }
+    }, [editor, isCooldown, isEditorContentEmpty, id, title]); // Dépendances complètes
 
   const handleDelete = async () => {
     try {
@@ -176,7 +172,52 @@ const NoteDetails = () => {
     }
   };
 
+    useHotkeys('ctrl+s', (e) => {
+        e.preventDefault(); // Bloque la sauvegarde du navigateur
+        void handleSaveContent();
+    }, {
+        enableOnFormTags: true,        // Marche quand on tape le titre
+        enableOnContentEditable: true, // Marche quand on tape dans la note
+        preventDefault: true
+    }, [handleSaveContent]);
+    useHotkeys('alt+r', (e) => {
+        e.preventDefault(); // Bloque la sauvegarde du navigateur
+        void handleDelete();
+    }, {
+        enableOnFormTags: true,        // Marche quand on tape le titre
+        enableOnContentEditable: true, // Marche quand on tape dans la note
+        preventDefault: true
+    }, [handleSaveContent]);
+
+    useHotkeys('alt+v', (e) => {
+        e.preventDefault();
+        setIsReadOnly(!isReadOnly);
+    },{
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+        preventDefault: true
+    });
+
+    useHotkeys('alt+i', (e) => {
+        e.preventDefault();
+        setShowInfoModal(!showInfoModal);
+    }, {
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+        preventDefault: true
+    });
+    useHotkeys('ctrl +enter', (e) => {
+        e.preventDefault();
+        navigate("/home");
+    }, {
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+        preventDefault: true
+    });
+
   if (!editor) return null;
+
+
 
   return (
     <div className="grim-layout">

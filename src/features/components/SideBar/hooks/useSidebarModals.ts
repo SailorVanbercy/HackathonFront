@@ -85,7 +85,7 @@ export const useSidebarModals = (): UseSidebarModalsType => {
         isCreateOpen,
         setIsCreateOpen,
         targetParentId,
-        setTargetParentId, // Plus besoin de 'as any'
+        setTargetParentId,
         creationType,
         openCreateModal,
 
