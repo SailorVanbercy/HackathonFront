@@ -14,10 +14,14 @@ import {
 } from "../services/notes/noteService";
 import Sidebar from "./SideBar/sidebar";
 import type { MetaDataDTO } from "../services/notes/noteService";
+import {useHotkeys} from "react-hotkeys-hook";
 
 const formatDateTime = (iso: string) => {
     try {
-        return new Date(iso).toLocaleString();
+        return new Date(iso).toLocaleString(undefined, {
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
     } catch {
         return iso;
     }
@@ -32,23 +36,21 @@ const formatBytes = (bytes: number, decimals = 1) => {
     const v = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
     return `${v} ${sizes[i]}`;
 };
-import {useHotkeys} from "react-hotkeys-hook";
 
 const NoteDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+    const { id } = useParams();
+    const navigate = useNavigate();
 
-  // États existants
-  const [title, setTitle] = useState("");
-  const [isReadOnly, setIsReadOnly] = useState(false);
-  const [showInfoModal, setShowInfoModal] = useState(false);
+    // États existants
+    const [title, setTitle] = useState("");
+    const [isReadOnly, setIsReadOnly] = useState(false);
+    const [showInfoModal, setShowInfoModal] = useState(false);
 
-  // Popup d'erreur personnalisée
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+    // Popup d'erreur personnalisée
+    const [showErrorPopup, setShowErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     // Metadata
-    const [isMetaPanelOpen] = useState(false);
     const [metadata, setMetadata] = useState<MetaDataDTO | null>(null);
     const [isMetaLoading, setIsMetaLoading] = useState(false);
     const [metaError, setMetaError] = useState<string | null>(null);
@@ -92,9 +94,10 @@ const NoteDetails = () => {
     });
 
     // Charger metadata
-    const fetchMetadata = useCallback(async () => {
+    // CORRECTION : Ajout du mode "silent" pour ne pas faire clignoter le loader en autosave
+    const fetchMetadata = useCallback(async (isSilent = false) => {
         if (!id) return;
-        setIsMetaLoading(true);
+        if (!isSilent) setIsMetaLoading(true);
         setMetaError(null);
         try {
             const md = await getMetaData(Number(id));
@@ -103,27 +106,18 @@ const NoteDetails = () => {
             console.error("Erreur metadata:", e);
             setMetaError("Impossible de récupérer les métadonnées.");
         } finally {
-            setIsMetaLoading(false);
+            if (!isSilent) setIsMetaLoading(false);
         }
     }, [id]);
 
-    // Mise à jour metadata locale
+    // Mise à jour metadata locale (calculs temps réel pour les stats, pas la date)
     useEffect(() => {
         if (!editor) return;
 
         const updateLocalMeta = () => {
             const plain = editor.getText();
-
-            const countWords = (text: string) => {
-                const m = text.trim().match(/\S+/g);
-                return m ? m.length : 0;
-            };
-
-            const countLines = (text: string) => {
-                if (!text) return 0;
-                return text.split(/\r\n|\r|\n/).length;
-            };
-
+            const countWords = (text: string) => (text.trim().match(/\S+/g) || []).length;
+            const countLines = (text: string) => text ? text.split(/\r\n|\r|\n/).length : 0;
             const byteSize = new Blob([editor.getHTML()]).size;
 
             setMetadata((prev) =>
@@ -141,10 +135,7 @@ const NoteDetails = () => {
 
         editor.on("update", updateLocalMeta);
         updateLocalMeta();
-
-        return () => {
-            editor.off("update", updateLocalMeta);
-        };
+        return () => { editor.off("update", updateLocalMeta); };
     }, [editor]);
 
     // Sync lecture/édition
@@ -171,7 +162,7 @@ const NoteDetails = () => {
                     }
                 }, 0);
 
-                fetchMetadata();
+                fetchMetadata(); // Chargement initial (avec loader)
             } catch (err) {
                 console.error("Erreur chargement:", err);
                 navigate("/home");
@@ -194,20 +185,17 @@ const NoteDetails = () => {
         if (!editor || !id) return;
 
         const html = editor.getHTML();
-        const turndownService = new TurndownService({
-            headingStyle: "atx",
-            codeBlockStyle: "fenced",
-        });
+        const turndownService = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
         const markdown = turndownService.turndown(html);
 
-        // Rien n’a changé → on ignore
         const titleChanged = title !== lastSavedTitleRef.current;
         const contentChanged = markdown !== lastSavedContentRef.current;
+
         if (!titleChanged && !contentChanged) {
+            setSaveStatus("saved");
             return;
         }
 
-        // Contenu vide → ne pas sauvegarder
         if (isEditorContentEmpty()) {
             setSaveStatus("dirty");
             return;
@@ -225,46 +213,42 @@ const NoteDetails = () => {
                     lastSavedContentRef.current = markdown;
 
                     setSaveStatus("saved");
-
                     setSidebarKey((prev) => prev + 1);
 
-                    if (isMetaPanelOpen) {
-                        fetchMetadata();
-                    }
+                    // CORRECTION MAJEURE : On appelle fetchMetadata ICI, à l'intérieur de la file d'attente.
+                    // Cela garantit que l'update est FINI côté serveur avant de demander la date.
+                    // On passe 'true' pour le mode silencieux (pas de loader visuel).
+                    await fetchMetadata(true);
+
                 } catch (err) {
-                    console.error(err);
+                    console.error("Erreur save:", err);
                     setSaveStatus("dirty");
                 }
             });
 
+        // On attend simplement que la file se vide.
+        // On NE FAIT PLUS "await fetchMetadata()" ici pour éviter le conflit.
         await savingQueueRef.current;
+        await fetchMetadata();
     };
 
-    // 🆕 Debounce autosave
     const scheduleAutosave = (delay = 600) => {
-        if (autosaveTimeoutRef.current) {
-            clearTimeout(autosaveTimeoutRef.current);
-        }
-        autosaveTimeoutRef.current = setTimeout(() => {
-            saveNow();
-        }, delay);
+        if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+        autosaveTimeoutRef.current = setTimeout(() => saveNow(), delay);
     };
 
-    // Sauvegarder à la fermeture de la page
     useEffect(() => {
         const handler = () => saveNow();
         window.addEventListener("beforeunload", handler);
         return () => window.removeEventListener("beforeunload", handler);
     }, [editor, title]);
 
-    // Sauvegarder si le titre change
     useEffect(() => {
         if (!editor) return;
         setSaveStatus("dirty");
         scheduleAutosave();
     }, [title]);
 
-    // Supprimer note
     const handleDelete = async () => {
         try {
             await deleteNote(Number(id));
@@ -275,34 +259,11 @@ const NoteDetails = () => {
         }
     };
 
+    useHotkeys('alt+v', (e) => { e.preventDefault(); setIsReadOnly(!isReadOnly); }, { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true });
+    useHotkeys('alt+i', (e) => { e.preventDefault(); setShowInfoModal(!showInfoModal); }, { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true });
+    useHotkeys('ctrl +enter', (e) => { e.preventDefault(); navigate("/home"); }, { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true });
 
-    useHotkeys('alt+v', (e) => {
-        e.preventDefault();
-        setIsReadOnly(!isReadOnly);
-    },{
-        enableOnFormTags: true,
-        enableOnContentEditable: true,
-        preventDefault: true
-    });
-
-    useHotkeys('alt+i', (e) => {
-        e.preventDefault();
-        setShowInfoModal(!showInfoModal);
-    }, {
-        enableOnFormTags: true,
-        enableOnContentEditable: true,
-        preventDefault: true
-    });
-    useHotkeys('ctrl +enter', (e) => {
-        e.preventDefault();
-        navigate("/home");
-    }, {
-        enableOnFormTags: true,
-        enableOnContentEditable: true,
-        preventDefault: true
-    });
-
-  if (!editor) return null;
+    if (!editor) return null;
 
     return (
         <div className="grim-layout">
@@ -316,122 +277,69 @@ const NoteDetails = () => {
                         {isReadOnly ? (
                             <h1 className="grim-title-display">{title}</h1>
                         ) : (
-                            <input
-                                type="text"
-                                className="grim-title-input"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Titre du Sortilège..."
-                            />
+                            <input type="text" className="grim-title-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre du Sortilège..." />
                         )}
                     </div>
 
                     {!isReadOnly && (
                         <div className="grim-toolbar">
-                            <button
-                                onClick={() => editor.chain().focus().toggleBold().run()}
-                                className={`tool-btn ${editor.isActive("bold") ? "active" : ""}`}
-                                title="Gras"
-                            >
-                                B
-                            </button>
-
-                            <button
-                                onClick={() => editor.chain().focus().toggleItalic().run()}
-                                className={`tool-btn ${editor.isActive("italic") ? "active" : ""}`}
-                                title="Italique"
-                            >
-                                I
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    const previousUrl = editor.getAttributes("link").href;
-                                    const url = window.prompt("URL du lien :", previousUrl);
-                                    if (url === null) return;
-                                    if (url === "") {
-                                        editor.chain().focus().extendMarkRange("link").unsetLink().run();
-                                    } else {
-                                        editor
-                                            .chain()
-                                            .focus()
-                                            .extendMarkRange("link")
-                                            .setLink({ href: url })
-                                            .run();
-                                    }
-                                }}
-                                className={`tool-btn ${editor.isActive("link") ? "active" : ""}`}
-                                title="Lien"
-                            >
-                                🔗
-                            </button>
-
-                            <button
-                                onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                                className={`tool-btn ${editor.isActive("heading", { level: 1 }) ? "active" : ""}`}
-                            >
-                                H1
-                            </button>
-
-                            <button
-                                onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                                className={`tool-btn ${editor.isActive("heading", { level: 2 }) ? "active" : ""}`}
-                            >
-                                H2
-                            </button>
-
-                            <button
-                                onClick={() => setShowInfoModal(true)}
-                                className="tool-btn info-btn"
-                                title="Guide Markdown"
-                            >
-                                ❓
-                            </button>
+                            <button onClick={() => editor.chain().focus().toggleBold().run()} className={`tool-btn ${editor.isActive("bold") ? "active" : ""}`}>B</button>
+                            <button onClick={() => editor.chain().focus().toggleItalic().run()} className={`tool-btn ${editor.isActive("italic") ? "active" : ""}`}>I</button>
+                            <button onClick={() => {
+                                const previousUrl = editor.getAttributes("link").href;
+                                const url = window.prompt("URL du lien :", previousUrl);
+                                if (url === null) return;
+                                if (url === "") editor.chain().focus().extendMarkRange("link").unsetLink().run();
+                                else editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+                            }} className={`tool-btn ${editor.isActive("link") ? "active" : ""}`}>🔗</button>
+                            <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={`tool-btn ${editor.isActive("heading", { level: 1 }) ? "active" : ""}`}>H1</button>
+                            <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={`tool-btn ${editor.isActive("heading", { level: 2 }) ? "active" : ""}`}>H2</button>
+                            <button onClick={() => setShowInfoModal(true)} className="tool-btn info-btn">❓</button>
                         </div>
                     )}
 
                     <div className="grim-actions">
                         {isReadOnly ? (
-                            <button onClick={() => setIsReadOnly(false)} className="grim-btn edit-btn">
-                                ✏️ Modifier
-                            </button>
+                            <button onClick={() => setIsReadOnly(false)} className="grim-btn edit-btn">✏️ Modifier</button>
                         ) : (
                             <>
-                                <button
-                                    onClick={() => setIsReadOnly(true)}
-                                    className="grim-btn view-btn"
-                                    title="Mode Lecture"
-                                >
-                                    👁️
-                                </button>
-
-                                {/* 🆕 INDICATEUR VISUEL */}
-                                <div
-                                    className={`save-indicator ${saveStatus}`}
-                                    title={
-                                        saveStatus === "saved"
-                                            ? "Sauvegardé"
-                                            : saveStatus === "saving"
-                                                ? "Sauvegarde en cours…"
-                                                : "Modifications non sauvegardées"
-                                    }
-                                />
+                                <button onClick={() => setIsReadOnly(true)} className="grim-btn view-btn">👁️</button>
                             </>
                         )}
-
-                        <button onClick={handleDelete} className="grim-btn delete-btn">
-                            ❌ Supprimer
-                        </button>
                     </div>
                 </div>
 
-                <div
-                    className="grim-paper"
-                    onClick={() => !isReadOnly && editor.chain().focus().run()}
-                >
+                <div className="grim-paper" onClick={() => !isReadOnly && editor.chain().focus().run()}>
                     <EditorContent editor={editor} />
                 </div>
+
+                {/* --- NOUVEAU STYLE : BARRE FLOTTANTE COMPACTE --- */}
+                {!isMetaLoading && !metaError && metadata && (
+                    <div className="grim-meta-bar">
+                        <span title="Dernière modification">🕒 {formatDateTime(metadata.updatedAt)}</span>
+                        <span className="meta-sep">•</span>
+                        <span>📦 {formatBytes(metadata.byteSize)}</span>
+                        <span className="meta-sep">•</span>
+                        <span>🔤 {metadata.characterCount}</span>
+                        <span className="meta-sep">•</span>
+                        <span>📝 {metadata.wordCount} mots</span>
+                    </div>
+                )}
+                {isMetaLoading && <div className="grim-meta-bar">⏳ Synchronisation...</div>}
+                {metaError && <div className="grim-meta-bar error">⚠️ {metaError}</div>}
             </div>
+
+            {showInfoModal && (
+                <div className="grim-modal-overlay" onClick={() => setShowInfoModal(false)}>
+                    <div className="grim-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="grim-modal-title">Aide Markdown</h2>
+                        {/* Contenu aide simplifié */}
+                        <div className="guide-item"><span>**Gras**</span> <span>Ctrl+B</span></div>
+                        <div className="guide-item"><span>*Italique*</span> <span>Ctrl+I</span></div>
+                        <button className="close-modal-btn" onClick={() => setShowInfoModal(false)}>Fermer</button>
+                    </div>
+                </div>
+            )}
 
             {showErrorPopup && (
                 <div className="grim-error-popup">
@@ -439,24 +347,6 @@ const NoteDetails = () => {
                     <div className="popup-text">{errorMessage}</div>
                 </div>
             )}
-
-            <div className="meta-footer">
-                {isMetaLoading && <span>⏳ Chargement des métadonnées…</span>}
-
-                {metaError && <span className="meta-error">⚠️ {metaError}</span>}
-
-                {!isMetaLoading && !metaError && metadata && (
-                    <div className="meta-info-row">
-                        <span><strong>ID :</strong> {metadata.id}</span>
-                        <span><strong>Créée :</strong> {formatDateTime(metadata.createdAt)}</span>
-                        <span><strong>Modifiée :</strong> {formatDateTime(metadata.updatedAt)}</span>
-                        <span><strong>Taille :</strong> {formatBytes(metadata.byteSize)}</span>
-                        <span><strong>Caractères :</strong> {metadata.characterCount.toLocaleString()}</span>
-                        <span><strong>Mots :</strong> {metadata.wordCount.toLocaleString()}</span>
-                        <span><strong>Lignes :</strong> {metadata.lineCount.toLocaleString()}</span>
-                    </div>
-                )}
-            </div>
         </div>
     );
 };
