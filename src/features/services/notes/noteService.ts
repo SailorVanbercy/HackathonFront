@@ -21,6 +21,17 @@ export interface NoteDetailDTO {
   updatedAt: string;
 }
 
+export interface MetaDataDTO {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  byteSize: number;
+  characterCount: number;
+  wordCount: number;
+  lineCount: number;
+}
+
 // Pour la création
 export interface CreateNoteRequest {
   name: string;
@@ -128,10 +139,26 @@ export const updateNote = async (
 };
 
 // 6. SUPPRESSION D'UNE NOTE
+// DELETE api/notes/{id}
 export const deleteNote = async (id: number): Promise<void> => {
   await fetch(`${API_URL}/${id}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
   });
+};
+
+// 7. RECUPERATION DES METADATA
+// GET api/notes/{id}/metadata
+export const getMetaData = async (id: number): Promise<MetaDataDTO> => {
+  const response = await fetch(`${API_URL}/${id}/metadata`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+
+  if (!response.ok)
+    throw new Error("Erreur lors de la récupération des metadata de la note !");
+
+  return response.json();
 };

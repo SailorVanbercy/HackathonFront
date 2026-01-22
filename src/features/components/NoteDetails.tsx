@@ -10,8 +10,29 @@ import {
   deleteNote,
   getNoteById,
   updateNote,
+  getMetaData,
 } from "../services/notes/noteService";
 import Sidebar from "./SideBar/sidebar";
+import type { MetaDataDTO } from "../services/notes/noteService";
+
+const formatDateTime = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleString(); // locale du navigateur (fr-FR probable)
+  } catch {
+    return iso;
+  }
+};
+
+const formatBytes = (bytes: number, decimals = 1) => {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const v = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
+  return `${v} ${sizes[i]}`;
+};
+``;
 
 const NoteDetails = () => {
   const { id } = useParams();
@@ -23,6 +44,13 @@ const NoteDetails = () => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSavePopup, setShowSavePopup] = useState(false);
+
+  // Etats pour gérer les metadata dans un side panel
+
+  const [isMetaPanelOpen, setIsMetaPanelOpen] = useState(false);
+  const [metadata, setMetadata] = useState<MetaDataDTO | null>(null);
+  const [isMetaLoading, setIsMetaLoading] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
 
   // Popup d'erreur personnalisée
   const [showErrorPopup, setShowErrorPopup] = useState(false);
@@ -45,6 +73,69 @@ const NoteDetails = () => {
     editorProps: { attributes: { class: "tiptap-content" } },
   });
 
+  const fetchMetadata = useCallback(async () => {
+    if (!id) return;
+    setIsMetaLoading(true);
+    setMetaError(null);
+    try {
+      const md = await getMetaData(Number(id));
+      setMetadata(md);
+    } catch (e) {
+      console.error("Erreur metadata:", e);
+      setMetaError("Impossible de récupérer les métadonnées.");
+    } finally {
+      setIsMetaLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    // 1) Déclare le handler avec une référence stable dans cette portée
+    const updateLocalMeta = () => {
+      const plain = editor.getText(); // texte brut sans balises
+
+      const countWords = (text: string) => {
+        const m = text.trim().match(/\S+/g);
+        return m ? m.length : 0;
+      };
+
+      const countLines = (text: string) => {
+        if (!text) return 0;
+        return text.split(/\r\n|\r|\n/).length;
+      };
+
+      // Estimation rapide de la taille en bytes via l’HTML courant
+      const byteSize = new Blob([editor.getHTML()]).size;
+
+      setMetadata((prev) =>
+        prev
+          ? {
+              ...prev,
+              characterCount: plain.length,
+              wordCount: countWords(plain),
+              lineCount: countLines(plain),
+              byteSize,
+            }
+          : prev,
+      );
+    };
+
+    // 2) Souscription
+    editor.on("update", updateLocalMeta);
+    // (Option si tu veux être encore plus réactif)
+    // editor.on('selectionUpdate', updateLocalMeta);
+
+    // 3) Mise à jour initiale
+    updateLocalMeta();
+
+    // 4) Nettoyage correct avec editor.off
+    return () => {
+      editor.off("update", updateLocalMeta);
+      // editor.off('selectionUpdate', updateLocalMeta);
+    };
+  }, [editor, setMetadata]);
+
   // Synchronisation mode lecture/écriture
   useEffect(() => {
     if (!editor) return;
@@ -66,9 +157,13 @@ const NoteDetails = () => {
             editor.commands.setContent(htmlContent);
           }
         }, 0);
+
+        fetchMetadata();
       } catch (error) {
         console.error("Erreur chargement:", error);
         navigate("/home");
+      } finally {
+        setIsMetaLoading(false);
       }
     };
     loadData();
@@ -155,6 +250,11 @@ const NoteDetails = () => {
 
       // Démarrer le cooldown de 2.5s
       startCooldown();
+
+      // Recharger les métadonnées après sauvegarde si le panneau est ouvert
+      if (isMetaPanelOpen) {
+        await fetchMetadata();
+      }
     } catch (error) {
       console.error(error);
       setErrorMessage("Une erreur est survenue lors de l'enregistrement.");
@@ -351,6 +451,40 @@ const NoteDetails = () => {
           <div className="popup-text">{errorMessage || "Erreur inconnue."}</div>
         </div>
       )}
+
+      {/* BARRE DE MÉTADONNÉES EN BAS */}
+      <div className="meta-footer">
+        {isMetaLoading && <span>⏳ Chargement des métadonnées…</span>}
+
+        {metaError && <span className="meta-error">⚠️ {metaError}</span>}
+
+        {!isMetaLoading && !metaError && metadata && (
+          <div className="meta-info-row">
+            <span>
+              <strong>ID :</strong> {metadata.id}
+            </span>
+            <span>
+              <strong>Créée :</strong> {formatDateTime(metadata.createdAt)}
+            </span>
+            <span>
+              <strong>Modifiée :</strong> {formatDateTime(metadata.updatedAt)}
+            </span>
+            <span>
+              <strong>Taille :</strong> {formatBytes(metadata.byteSize)}
+            </span>
+            <span>
+              <strong>Caractères :</strong>{" "}
+              {metadata.characterCount.toLocaleString()}
+            </span>
+            <span>
+              <strong>Mots :</strong> {metadata.wordCount.toLocaleString()}
+            </span>
+            <span>
+              <strong>Lignes :</strong> {metadata.lineCount.toLocaleString()}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
