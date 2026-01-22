@@ -25,7 +25,7 @@ const SIDEBAR_MAX = 460;
 const SIDEBAR_COLLAPSED_WIDTH = 0;
 
 const Sidebar = forwardRef<SidebarHandle, SidebarProps>((props, ref) => {
-    let navigate = useNavigate();
+    const navigate = useNavigate();
     // État de recherche
     const [search, setSearch] = useState("");
 

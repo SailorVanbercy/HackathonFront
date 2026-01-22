@@ -3,20 +3,20 @@ import { getAllDirectories, type DirectoryDTO } from "../../../services/director
 import { getAllNotes, type NoteTreeItemDTO } from "../../../services/notes/noteService";
 import type { FlatItem } from "../SideBarPart/sidebarTypes";
 
-// Nom technique du dossier racine
+// Technical name for the hidden root directory
 const HIDDEN_ROOT_NAME = "root";
 
 export const useSidebarTree = (searchQuery: string = "") => {
-    // Données brutes
+    // Raw data
     const [directories, setDirectories] = useState<DirectoryDTO[]>([]);
     const [notes, setNotes] = useState<NoteTreeItemDTO[]>([]);
 
-    // États d'affichage
+    // Display state
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const [activeId, setActiveId] = useState<string>("");
 
-    // 1. Chargement des données
+    // 1. Data Fetching
     const refreshTree = useCallback(async () => {
         try {
             const [dirs, fetchedNotes] = await Promise.all([
@@ -36,40 +36,41 @@ export const useSidebarTree = (searchQuery: string = "") => {
         refreshTree().finally(() => setIsLoading(false));
     }, [refreshTree]);
 
-    // 2. Gestion de l'expansion
+    // 2. Expand/Collapse toggle logic
     const toggleExpand = useCallback((id: string) => {
         setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
     }, []);
 
-    // 3. Construction de l'arbre visuel (FlatList)
+    // 3. Visual Tree Construction (FlatList transformation)
+    // This hook flattens the recursive structure into a list for rendering
     const { visibleItems, matchSet, allNodes } = useMemo(() => {
         const flatList: FlatItem[] = [];
-        const matches = new Set<string>(); // IDs des éléments qui matchent le texte (pour surlignage)
+        const matches = new Set<string>(); // IDs of items matching search query
         const nodesMap = new Map<string, { name: string; type: 'directory' | 'note' }>();
 
         const isSearching = searchQuery.trim().length > 0;
         const lowerQuery = searchQuery.toLowerCase();
 
-        // --- PHASE DE PRÉ-CALCUL (FILTRAGE STRICT) ---
-        // Set des IDs de dossiers qui doivent être visibles (le chemin vers les résultats)
+        // --- PRE-CALCULATION PHASE (STRICT FILTERING) ---
+        // Set of directory IDs that must remain visible (path to results)
         const keptDirIds = new Set<number>();
 
         if (isSearching) {
-            // Map pour remonter rapidement aux parents
+            // Quick lookup map for parent navigation
             const parentMap = new Map<number, number>();
             directories.forEach(d => parentMap.set(d.id, d.parentDirectoryId || 0));
 
-            // Fonction pour marquer un dossier et tous ses ancêtres comme "à garder"
+            // Helper to recursively mark ancestors as "kept"
             const keepAncestors = (dirId: number) => {
                 let curr: number | undefined = dirId;
-                // On remonte tant qu'on a un ID valide et qu'il n'est pas déjà marqué
+                // Move up the tree until root or already visited
                 while (curr && curr !== 0 && !keptDirIds.has(curr)) {
                     keptDirIds.add(curr);
                     curr = parentMap.get(curr);
                 }
             };
 
-            // 1. Trouver les notes correspondantes et garder leurs parents
+            // 1. Find matching notes and keep their path
             notes.forEach(n => {
                 if (n.name.toLowerCase().includes(lowerQuery)) {
                     matches.add(`note-${n.id}`);
@@ -77,53 +78,53 @@ export const useSidebarTree = (searchQuery: string = "") => {
                 }
             });
 
-            // 2. Trouver les dossiers correspondants et garder leurs parents
+            // 2. Find matching directories and keep their path
             directories.forEach(d => {
                 if (d.name.toLowerCase().includes(lowerQuery)) {
                     matches.add(`dir-${d.id}`);
-                    keepAncestors(d.id); // On garde le dossier lui-même
-                    // On garde aussi ses parents
+                    keepAncestors(d.id); // Keep the directory itself
+                    // Keep its parents too
                     if (d.parentDirectoryId) keepAncestors(d.parentDirectoryId);
                 }
             });
         }
         // ---------------------------------------------
 
-        // Identification du root
+        // Identify root directory
         const rootDir = directories.find((d) => d.name === HIDDEN_ROOT_NAME);
         const rootDirId = rootDir?.id;
 
-        // Fonction récursive de traversée
+        // Recursive Traversal Function
         const traverse = (parentId: number, currentDepth: number) => {
 
-            // Filtrer les DOSSIERS enfants directs
+            // Filter direct child DIRECTORIES
             let currentDirs = directories.filter((d) => {
                 if (parentId === 0) return !d.parentDirectoryId || d.parentDirectoryId === 0;
                 return d.parentDirectoryId === parentId;
             });
 
-            // Si recherche : on ne garde QUE ceux qui sont sur le chemin d'un résultat
+            // If searching, only keep directories that are part of a result path
             if (isSearching) {
                 currentDirs = currentDirs.filter(d => keptDirIds.has(d.id));
             }
 
-            // Filtrer les NOTES enfants directes
+            // Filter direct child NOTES
             let currentNotes = notes.filter((n) => {
                 if (parentId === 0) return !n.directoryId || n.directoryId === 0;
                 return n.directoryId === parentId;
             });
 
-            // Si recherche : on ne garde QUE les notes qui matchent exactement
+            // If searching, only keep notes that match exactly
             if (isSearching) {
                 currentNotes = currentNotes.filter(n => matches.has(`note-${n.id}`));
             }
 
-            // --- TRAITEMENT DES DOSSIERS ---
+            // --- PROCESS DIRECTORIES ---
             for (const dir of currentDirs) {
                 const strId = `dir-${dir.id}`;
                 nodesMap.set(strId, { name: dir.name, type: 'directory' });
 
-                // LOGIQUE ROOT CACHÉ
+                // HIDDEN ROOT LOGIC: Skip rendering root, just traverse its children
                 if (dir.id === rootDirId) {
                     traverse(dir.id, currentDepth);
                     continue;
@@ -133,7 +134,7 @@ export const useSidebarTree = (searchQuery: string = "") => {
                     directories.some((d) => d.parentDirectoryId === dir.id) ||
                     notes.some((n) => n.directoryId === dir.id);
 
-                // En mode recherche, on force l'ouverture car on sait que c'est un dossier "utile"
+                // Auto-expand if searching to show results
                 const isOpen = expanded[strId] || isSearching;
 
                 flatList.push({
@@ -149,7 +150,7 @@ export const useSidebarTree = (searchQuery: string = "") => {
                 }
             }
 
-            // --- TRAITEMENT DES NOTES ---
+            // --- PROCESS NOTES ---
             for (const note of currentNotes) {
                 const strId = `note-${note.id}`;
                 nodesMap.set(strId, { name: note.name, type: 'note' });
@@ -164,7 +165,7 @@ export const useSidebarTree = (searchQuery: string = "") => {
             }
         };
 
-        // Démarrage
+        // Start traversal from root (ID 0)
         traverse(0, 0);
 
         const allNodesList = Array.from(nodesMap.entries()).map(([id, val]) => ({ id, ...val }));

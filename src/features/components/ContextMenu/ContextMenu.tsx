@@ -89,7 +89,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                         {/* Sous-menu */}
                         <AnimatePresence>
                             {showInvocationSub && (
-                                // CORRECTION : Conteneur "Pont" invisible pour éviter le trou (gap)
                                 <div
                                     style={{
                                         position: 'absolute',

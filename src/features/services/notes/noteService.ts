@@ -109,7 +109,7 @@ export const createNote = async (
     return response.json();
 };
 
-// 5. MODIFICATION D'UNE NOTE (CORRIGÉ)
+// 5. MODIFICATION D'UNE NOTE
 // Le serveur renvoie les métadonnées (dates, stats...) après update
 export const updateNote = async (
     id: number,
