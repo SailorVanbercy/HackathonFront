@@ -6,6 +6,7 @@ import { Ghost } from "../../components/Ghost/Ghost";
 import { Bats } from "../../components/Bats/Bats";
 import './HomePage.css';
 import {useNavigate} from "react-router";
+import {useHotkeys} from "react-hotkeys-hook";
 
 interface NoteDisplay extends NoteTreeItemDTO {
     updatedAt?: string;

@@ -1,17 +1,18 @@
 import { useCallback } from "react";
+import { useNavigate } from "react-router"; // ⬅️ Ajout
 import {
   createDirectory,
   updateDirectory,
   deleteDirectory,
 } from "../../../services/directories/directoryService";
-import { createNote } from "../../../services/notes/noteService";
+import { createNote, deleteNote } from "../../../services/notes/noteService";
 import {
   exportAsZip,
+  exportDirAsZip,
   exportNoteAsPdf,
   exportNoteAsMarkdown,
 } from "../../../services/export/exportService";
 import type { UseSidebarModalsType } from "./useSidebarModals";
-import { deleteNote } from "../../../services/notes/noteService";
 
 interface UseSidebarActionsProps {
   refreshTree: () => Promise<void>;
@@ -24,6 +25,8 @@ export const useSidebarActions = ({
   modals,
   setExpanded,
 }: UseSidebarActionsProps) => {
+  const navigate = useNavigate(); // ⬅️ Ajout
+
   // --- CREATE FOLDER ---
   const handleCreateFolder = useCallback(
     async (name: string, parentId: number | null) => {
@@ -40,8 +43,7 @@ export const useSidebarActions = ({
     [refreshTree, setExpanded],
   );
 
-  // --- CREATE NOTE (CORRIGÉ) ---
-  // Suppression du paramètre content qui n'est pas utilisé par l'API createNote
+  // --- CREATE NOTE ---
   const handleCreateNote = useCallback(
     async (name: string, directoryId: number) => {
       try {
@@ -58,7 +60,7 @@ export const useSidebarActions = ({
     [refreshTree, setExpanded],
   );
 
-  // --- RENAME (Inchangé) ---
+  // --- RENAME ---
   const handleRenameSubmit = useCallback(
     async (_unusedId: string, newName: string) => {
       const id = modals.targetRenameId;
@@ -77,7 +79,7 @@ export const useSidebarActions = ({
     [refreshTree, modals],
   );
 
-  // --- DELETE (Inchangé) ---
+  // --- DELETE (redirige vers Home si note) ---
   const handleDeleteConfirm = useCallback(async () => {
     const id = modals.targetDeleteId;
     if (!id) return;
@@ -85,19 +87,24 @@ export const useSidebarActions = ({
       const cleanId = String(id).replace("dir-", "").replace("note-", "");
       if (id.startsWith("dir-")) {
         await deleteDirectory(Number(cleanId));
+        await refreshTree();
+        modals.setIsDeleteOpen(false);
+        // Pas de redirection pour un dossier
       } else if (id.startsWith("note-")) {
         await deleteNote(Number(cleanId));
+        await refreshTree();
+        modals.setIsDeleteOpen(false);
+        // ✅ Redirection Home après suppression d’une note
+        navigate("/");
       }
-      await refreshTree();
-      modals.setIsDeleteOpen(false);
     } catch (error) {
       console.error(error);
     }
-  }, [modals.targetDeleteId, refreshTree, modals]);
+  }, [modals.targetDeleteId, refreshTree, modals, navigate]); // ⬅️ navigate dans les deps
 
-  // --- EXPORT (Inchangé) ---
+  // --- EXPORT ---
   const handleExportConfirm = useCallback(
-    async (format: "zip" | "pdf" | "md") => {
+    async (format: "zipAll" | "zipDir" | "pdf" | "md") => {
       const id = modals.targetExportId;
       const name = modals.exportTargetName || "Grimoire_Item";
       const type = modals.exportItemType;
@@ -108,7 +115,8 @@ export const useSidebarActions = ({
 
       try {
         if (type === "directory") {
-          if (format === "zip") await exportAsZip(name);
+          if (format === "zipAll") await exportAsZip();
+          else if (format === "zipDir") await exportDirAsZip(name, numId);
         } else if (type === "note" && numId !== null) {
           if (format === "pdf") await exportNoteAsPdf(name, numId);
           else if (format === "md") await exportNoteAsMarkdown(name, numId);

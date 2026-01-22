@@ -23,14 +23,14 @@ interface CreateFolderModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (name: string, parentId: number | null) => void;
-    targetParentId: number | null; // On passe l'ID directement
+    targetParentId: number | null;
 }
 
 interface CreateNoteModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (name: string, directoryId: number) => void;
-    targetDirectoryId: number | null; // On passe l'ID directement
+    targetDirectoryId: number | null;
 }
 
 interface CommonModalProps {
@@ -60,7 +60,7 @@ const modalVariants: Variants = {
     },
 };
 
-// --- MODALE DOSSIER (Simplifiée) ---
+// --- MODALE DOSSIER (Inchangée) ---
 export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                                                                         isOpen, onClose, onSubmit, targetParentId
                                                                     }) => {
@@ -68,7 +68,6 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 
     const handleSubmit = () => {
         if (!name.trim()) return;
-        // On utilise directement le targetParentId fourni par le contexte
         onSubmit(name, targetParentId);
         setName("");
         onClose();
@@ -87,7 +86,6 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                                 <label className="modal-label">Nom du dossier</label>
                                 <input autoFocus className="magic-input" placeholder="Ex: Sortilèges Interdits" value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            {/* Suppression du Select : L'emplacement est défini par le clic droit */}
                         </div>
                         <div className="modal-actions">
                             <button className="btn-ghost" onClick={onClose}>Annuler</button>
@@ -100,7 +98,7 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     );
 };
 
-// --- MODALE NOTE (Simplifiée) ---
+// --- MODALE NOTE (Inchangée) ---
 export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
                                                                     isOpen, onClose, onSubmit, targetDirectoryId
                                                                 }) => {
@@ -108,7 +106,6 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
 
     const handleSubmit = () => {
         if (!name.trim()) return;
-        // targetDirectoryId peut être null (racine) ou un nombre. Le service gère le 0/null.
         const dirId = targetDirectoryId || 0;
         onSubmit(name, dirId);
         setName("");
@@ -128,7 +125,6 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
                                 <label className="modal-label">Titre</label>
                                 <input autoFocus className="magic-input" placeholder="Titre du sort..." value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            {/* Suppression du Select */}
                         </div>
                         <div className="modal-actions">
                             <button className="btn-ghost" onClick={onClose}>Annuler</button>
@@ -141,7 +137,7 @@ export const CreateNoteModal: React.FC<CreateNoteModalProps> = ({
     );
 };
 
-// --- AUTRES MODALES (Inchangées - juste exportées) ---
+// --- AUTRES MODALES ---
 interface RenameModalProps extends CommonModalProps { onSubmit: (id: string, name: string) => void; value: string; setValue: (v: string) => void; }
 export const RenameModal: React.FC<RenameModalProps> = ({ isOpen, onClose, onSubmit, value, setValue }) => {
     useModalShortcut(isOpen, onClose, () => onSubmit("", value));
@@ -180,19 +176,37 @@ export const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, onCon
     );
 };
 
-interface ExportModalProps extends CommonModalProps { onConfirm: (f: 'zip' | 'pdf' | 'md') => void; folderName?: string; itemType: 'directory' | 'note'; }
-export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, folderName, itemType }) => {
+// --- MODALE EXPORT (MODIFIÉE) ---
+interface ExportModalProps extends CommonModalProps {
+    onConfirm: (f: 'zipAll' | 'zipDir' | 'pdf' | 'md') => void;
+    folderName?: string;
+    itemType: 'directory' | 'note';
+    isGlobal?: boolean; // NOUVEAU
+}
+
+export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, folderName, itemType, isGlobal }) => {
     useModalShortcut(isOpen, onClose);
+
+    // Titre dynamique
+    const title = isGlobal ? "Export Global" : `Exporter ${folderName || ''}`;
+
     return (
         <AnimatePresence>
             {isOpen && <motion.div className="modal-overlay" initial="hidden" animate="visible" exit="hidden" variants={overlayVariants}>
                 <motion.div className="modal-content" variants={modalVariants}>
-                    <h2 className="modal-title">Exporter {folderName}</h2>
+                    <h2 className="modal-title">{title}</h2>
                     <div className="export-options">
                         {itemType === 'directory' && (
-                            <div className="export-card" onClick={() => onConfirm('zip')}>
+                            <div className="export-card" onClick={() => onConfirm('zipAll')}>
                                 <div className="export-icon">📦</div>
                                 <div className="export-info"><h4>Archive ZIP</h4><p>Tout le contenu</p></div>
+                            </div>
+                        )}
+                        {/* On n'affiche l'export partiel que si ce N'EST PAS un export global */}
+                        {itemType === 'directory' && !isGlobal && (
+                            <div className="export-card" onClick={() => onConfirm('zipDir')}>
+                                <div className="export-icon">📦</div>
+                                <div className="export-info"><h4>Archive ZIP du dossier actuel</h4><p>Tout le contenu du dossier actuel</p></div>
                             </div>
                         )}
                         {itemType === 'note' && (

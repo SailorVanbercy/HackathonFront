@@ -2,136 +2,155 @@ const API_URL = import.meta.env.VITE_API_URL + "/notes";
 
 // --- DTOs (Data Transfer Objects) ---
 
-// Pour l'affichage dans l'arbre (contient directoryId pour savoir où la ranger)
 export interface NoteTreeItemDTO {
-  id: number;
-  name: string;
-  directoryId: number;
-  createdAt: string;
+    id: number;
+    name: string;
+    directoryId: number;
+    createdAt: string;
 }
 
-// Pour le détail d'une note (contient le contenu)
 export interface NoteDetailDTO {
-  id: number;
-  userId: number;
-  directoryId: number;
-  name: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
+    id: number;
+    userId: number;
+    directoryId: number;
+    name: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
-// Pour la création
+export interface MetaDataDTO {
+    id: number;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+    byteSize: number;
+    characterCount: number;
+    wordCount: number;
+    lineCount: number;
+}
+
 export interface CreateNoteRequest {
-  name: string;
-  directoryId: number | null; // Peut être null si à la racine (selon ton backend)
+    name: string;
+    directoryId: number | null;
 }
 
-// Interfaces de réponse Backend
 interface GetAllNotesResponse {
-  notes: NoteTreeItemDTO[];
+    notes: NoteTreeItemDTO[];
 }
 
-//Interface pour la modification d'une note
 export interface UpdateNoteRequest {
-  name: string;
-  content: string;
+    name: string;
+    content: string;
 }
 
 interface GetNotesByDirResponse {
-  notes: { id: number; name: string; createdAt: string }[];
+    notes: { id: number; name: string; createdAt: string }[];
 }
 
 // --- APPELS API ---
-//push comment
+
 // 1. RÉCUPÉRATION GLOBALE
-// GET /api/notes
 export const getAllNotes = async (): Promise<NoteTreeItemDTO[]> => {
-  const response = await fetch(`${API_URL}/me`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-  });
+    const response = await fetch(`${API_URL}/me`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+    });
 
-  if (!response.ok)
-    throw new Error("Impossible de rassembler les parchemins (Notes)");
+    if (!response.ok)
+        throw new Error("Impossible de rassembler les parchemins (Notes)");
 
-  const data: GetAllNotesResponse = await response.json();
-  return data.notes || [];
+    const data: GetAllNotesResponse = await response.json();
+    return data.notes || [];
 };
 
 // 2. RÉCUPÉRATION PAR DOSSIER
-// GET /api/notes/directory/{directoryId}
 export const getNotesByDirectory = async (directoryId: number) => {
-  const response = await fetch(`${API_URL}/directory/${directoryId}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-  });
+    const response = await fetch(`${API_URL}/directory/${directoryId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+    });
 
-  if (!response.ok)
-    throw new Error("Erreur lors de la récupération des notes du dossier");
+    if (!response.ok)
+        throw new Error("Erreur lors de la récupération des notes du dossier");
 
-  const data: GetNotesByDirResponse = await response.json();
-  return data.notes || [];
+    const data: GetNotesByDirResponse = await response.json();
+    return data.notes || [];
 };
 
-// 3. RÉCUPÉRATION D'UNE NOTE UNIQUE (Pour l'éditeur)
-// GET /api/notes/{id}
+// 3. RÉCUPÉRATION D'UNE NOTE UNIQUE
 export const getNoteById = async (id: number): Promise<NoteDetailDTO> => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-  });
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+    });
 
-  if (!response.ok) throw new Error("Impossible de lire ce parchemin");
+    if (!response.ok) throw new Error("Impossible de lire ce parchemin");
 
-  return response.json();
+    return response.json();
 };
 
 // 4. CRÉATION DE NOTE
-// POST /api/notes
 export const createNote = async (
-  req: CreateNoteRequest,
+    req: CreateNoteRequest,
 ): Promise<NoteDetailDTO> => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-    credentials: "include",
-  });
+    const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req),
+        credentials: "include",
+    });
 
-  if (!response.ok) throw new Error("Le rituel de création a échoué");
+    if (!response.ok) throw new Error("Le rituel de création a échoué");
 
-  return response.json();
+    return response.json();
 };
 
-// 5. MODIFICATION D'UNE NOTE
-// PUT api/notes/{id}
+// 5. MODIFICATION D'UNE NOTE (CORRIGÉ)
+// Le serveur renvoie les métadonnées (dates, stats...) après update
 export const updateNote = async (
-  id: number,
-  req: UpdateNoteRequest,
-): Promise<void> => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-    credentials: "include",
-  });
+    id: number,
+    req: UpdateNoteRequest,
+): Promise<MetaDataDTO> => {
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req),
+        credentials: "include",
+    });
 
-  if (!response.ok) {
-    if (response.status === 403)
-      throw new Error("Vous n'avez pas le droit de modifier ce parchemin");
-    throw new Error("Le sortilège de modification a échoué !");
-  }
+    if (!response.ok) {
+        if (response.status === 403)
+            throw new Error("Vous n'avez pas le droit de modifier ce parchemin");
+        throw new Error("Le sortilège de modification a échoué !");
+    }
+
+    // On retourne directement l'objet JSON reçu (MetaDataDTO)
+    return await response.json();
 };
 
 // 6. SUPPRESSION D'UNE NOTE
 export const deleteNote = async (id: number): Promise<void> => {
-  await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-  });
+    await fetch(`${API_URL}/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+    });
+};
+
+// 7. RECUPERATION DES METADATA
+export const getMetaData = async (id: number): Promise<MetaDataDTO> => {
+    const response = await fetch(`${API_URL}/${id}/metadata`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+    });
+
+    if (!response.ok)
+        throw new Error("Erreur lors de la récupération des metadata de la note !");
+
+    return response.json();
 };
