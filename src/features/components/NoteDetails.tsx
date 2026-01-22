@@ -176,7 +176,9 @@ const NoteDetails = () => {
       },
     },
 
-    onUpdate: () => {
+    onUpdate: ({transaction}) => {
+      if(!transaction.docChanged)
+          return;
       setSaveStatus("dirty");
       scheduleAutosave();
     },
@@ -360,9 +362,10 @@ const NoteDetails = () => {
 
     await savingQueueRef.current;
     await fetchMetadata();
+    setSaveStatus("saved");
   };
 
-  const scheduleAutosave = (delay = 600) => {
+  const scheduleAutosave = (delay = 1500) => {
     if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
     autosaveTimeoutRef.current = setTimeout(() => saveNow(), delay);
   };
