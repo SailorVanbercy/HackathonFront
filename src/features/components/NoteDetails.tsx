@@ -11,13 +11,18 @@ import {
   getNoteById,
   updateNote,
   getMetaData,
+  getAllNotes,
 } from "../services/notes/noteService";
 import Sidebar from "./SideBar/sidebar";
 import type { MetaDataDTO } from "../services/notes/noteService";
 
+// --- Types ---
+type NoteSummary = { id: number; name: string };
+
+// --- Utilitaires ---
 const formatDateTime = (iso: string) => {
   try {
-    return new Date(iso).toLocaleString(); // locale du navigateur (fr-FR probable)
+    return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
@@ -32,47 +37,88 @@ const formatBytes = (bytes: number, decimals = 1) => {
   const v = parseFloat((bytes / Math.pow(k, i)).toFixed(dm));
   return `${v} ${sizes[i]}`;
 };
-``;
 
 const NoteDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // États existants
+  // --- États Principaux ---
   const [title, setTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // --- États Modales ---
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSavePopup, setShowSavePopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Etats pour gérer les metadata dans un side panel
+  // --- États pour la modale de liens ---
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [notesList, setNotesList] = useState<NoteSummary[]>([]);
+  const [selectedNoteId, setSelectedNoteId] = useState<string>("");
+  const [externalUrl, setExternalUrl] = useState("");
 
+  // --- États Metadata ---
   const [isMetaPanelOpen, setIsMetaPanelOpen] = useState(false);
   const [metadata, setMetadata] = useState<MetaDataDTO | null>(null);
   const [isMetaLoading, setIsMetaLoading] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
 
-  // Popup d'erreur personnalisée
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  // Clé pour rafraîchir la Sidebar
+  // --- Utilitaires UI ---
   const [sidebarKey, setSidebarKey] = useState(0);
-
-  // Cooldown simple: griser 2.5s sans timer visuel
   const [isCooldown, setIsCooldown] = useState(false);
   const cooldownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // --- CONFIGURATION DE L'ÉDITEUR ---
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Link.configure({ openOnClick: false, autolink: true }),
+      Link.configure({
+        openOnClick: false, // On gère le clic manuellement
+        autolink: true,
+      }),
     ],
     content: "",
     editable: true,
-    editorProps: { attributes: { class: "tiptap-content" } },
+    editorProps: {
+      attributes: { class: "tiptap-content" },
+
+      // --- CORRECTION DU BUG D'OUVERTURE ---
+      handleClick: (view, pos, event) => {
+        const target = event.target as HTMLElement;
+        const link = target.closest("a");
+
+        if (link && link.href) {
+          // On analyse l'URL complète pour éviter les erreurs de chemin relatif/absolu
+          const url = new URL(link.href);
+          const currentOrigin = window.location.origin;
+
+          // C'est un lien interne si même domaine ET commence par /note/
+          const isInternal =
+            url.origin === currentOrigin && url.pathname.startsWith("/note/");
+
+          // CAS 1 : Navigation interne (SPA)
+          if (isInternal) {
+            event.preventDefault(); // Empêche le rechargement complet
+            navigate(url.pathname); // Navigation React Router
+            return true;
+          }
+
+          // CAS 2 : Lien externe en mode lecture
+          // On empêche le comportement par défaut pour éviter l'ouverture en double
+          if (isReadOnly) {
+            event.preventDefault();
+            window.open(link.href, "_blank");
+            return true;
+          }
+        }
+        return false;
+      },
+    },
   });
 
+  // --- Gestion Metadata ---
   const fetchMetadata = useCallback(async () => {
     if (!id) return;
     setIsMetaLoading(true);
@@ -91,21 +137,16 @@ const NoteDetails = () => {
   useEffect(() => {
     if (!editor) return;
 
-    // 1) Déclare le handler avec une référence stable dans cette portée
     const updateLocalMeta = () => {
-      const plain = editor.getText(); // texte brut sans balises
-
+      const plain = editor.getText();
       const countWords = (text: string) => {
         const m = text.trim().match(/\S+/g);
         return m ? m.length : 0;
       };
-
       const countLines = (text: string) => {
         if (!text) return 0;
         return text.split(/\r\n|\r|\n/).length;
       };
-
-      // Estimation rapide de la taille en bytes via l’HTML courant
       const byteSize = new Blob([editor.getHTML()]).size;
 
       setMetadata((prev) =>
@@ -121,28 +162,20 @@ const NoteDetails = () => {
       );
     };
 
-    // 2) Souscription
     editor.on("update", updateLocalMeta);
-    // (Option si tu veux être encore plus réactif)
-    // editor.on('selectionUpdate', updateLocalMeta);
-
-    // 3) Mise à jour initiale
     updateLocalMeta();
 
-    // 4) Nettoyage correct avec editor.off
     return () => {
       editor.off("update", updateLocalMeta);
-      // editor.off('selectionUpdate', updateLocalMeta);
     };
   }, [editor, setMetadata]);
 
-  // Synchronisation mode lecture/écriture
+  // --- Effets de chargement ---
   useEffect(() => {
     if (!editor) return;
     editor.setEditable(!isReadOnly);
   }, [editor, isReadOnly]);
 
-  // Chargement initial de la note
   useEffect(() => {
     if (!id || !editor) return;
     const loadData = async () => {
@@ -151,7 +184,6 @@ const NoteDetails = () => {
         setTitle(note.name);
         const htmlContent = note.content ? marked.parse(note.content) : "";
 
-        // Petit délai pour s'assurer que l'éditeur est prêt
         setTimeout(() => {
           if (editor && !editor.isDestroyed) {
             editor.commands.setContent(htmlContent);
@@ -167,64 +199,88 @@ const NoteDetails = () => {
       }
     };
     loadData();
-  }, [id, editor, navigate]);
+  }, [id, editor, navigate, fetchMetadata]);
 
-  const setLink = useCallback(() => {
+  // --- Gestion des Liens ---
+  const openLinkModal = useCallback(async () => {
     if (!editor) return;
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("URL du lien magique :", previousUrl);
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
+
+    const previousUrl = editor.getAttributes("link").href || "";
+    setExternalUrl(previousUrl);
+    setSelectedNoteId("");
+
+    try {
+      const notes = await getAllNotes();
+      setNotesList(notes);
+    } catch (e) {
+      console.error("Erreur chargement liste notes", e);
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+
+    setShowLinkModal(true);
   }, [editor]);
 
-  // Cooldown 2.5s après sauvegarde
+  const applyLink = () => {
+    if (!editor) return;
+
+    let url = "";
+
+    if (selectedNoteId) {
+      url = `/note/${selectedNoteId}`;
+    } else {
+      url = externalUrl;
+    }
+
+    if (url === "") {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    } else {
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: url })
+        .run();
+    }
+
+    setShowLinkModal(false);
+    setSelectedNoteId("");
+    setExternalUrl("");
+  };
+
+  // --- Sauvegarde & Suppression ---
   const startCooldown = () => {
     setIsCooldown(true);
-
-    // Nettoyer un ancien timeout au cas où
     if (cooldownTimeoutRef.current) {
       clearTimeout(cooldownTimeoutRef.current);
       cooldownTimeoutRef.current = null;
     }
-
     cooldownTimeoutRef.current = setTimeout(() => {
       setIsCooldown(false);
       cooldownTimeoutRef.current = null;
     }, 2500);
   };
 
-  // Nettoyage du timeout au démontage
   useEffect(() => {
     return () => {
       if (cooldownTimeoutRef.current) {
         clearTimeout(cooldownTimeoutRef.current);
-        cooldownTimeoutRef.current = null;
       }
     };
   }, []);
 
-  // Vérifie si le contenu éditeur est vide (ignore les balises/espaces)
   const isEditorContentEmpty = () => {
     if (!editor) return true;
-    const plainText = editor.getText().trim(); // TipTap fournit le texte brut sans balises
+    const plainText = editor.getText().trim();
     return plainText.length === 0;
   };
 
   const handleSaveContent = async () => {
     if (!editor) return;
-
-    // Empêche une nouvelle sauvegarde si cooldown actif
     if (isCooldown) return;
 
-    // ⛔ Validation : contenu vide → popup d'erreur, on stoppe tout
     if (isEditorContentEmpty()) {
       setErrorMessage("Invocation raté : le contenu de la page est vide.");
       setShowErrorPopup(true);
-      setTimeout(() => setShowErrorPopup(false), 3000); // auto-hide après 3s
+      setTimeout(() => setShowErrorPopup(false), 3000);
       return;
     }
 
@@ -235,23 +291,15 @@ const NoteDetails = () => {
       headingStyle: "atx",
       codeBlockStyle: "fenced",
     });
+
     const markdown = turndownService.turndown(html);
 
     try {
-      // Mise à jour de la note en base de données
       await updateNote(Number(id), { name: title, content: markdown });
-
-      // Popup succès
       setShowSavePopup(true);
       setTimeout(() => setShowSavePopup(false), 3000);
-
-      // Rafraîchir la Sidebar immédiatement
       setSidebarKey((prev) => prev + 1);
-
-      // Démarrer le cooldown de 2.5s
       startCooldown();
-
-      // Recharger les métadonnées après sauvegarde si le panneau est ouvert
       if (isMetaPanelOpen) {
         await fetchMetadata();
       }
@@ -280,7 +328,6 @@ const NoteDetails = () => {
 
   return (
     <div className="grim-layout">
-      {/* Sidebar avec la clé dynamique pour le rechargement */}
       <div className="grim-sidebar-wrapper">
         <Sidebar key={sidebarKey} />
       </div>
@@ -319,13 +366,15 @@ const NoteDetails = () => {
               >
                 I
               </button>
+
               <button
-                onClick={setLink}
+                onClick={openLinkModal}
                 className={`tool-btn ${editor.isActive("link") ? "active" : ""}`}
                 title="Lien"
               >
                 🔗
               </button>
+
               <button
                 onClick={() =>
                   editor.chain().focus().toggleHeading({ level: 1 }).run()
@@ -395,7 +444,7 @@ const NoteDetails = () => {
         </div>
       </div>
 
-      {/* Modale d'aide */}
+      {/* --- Modale d'aide --- */}
       {showInfoModal && (
         <div
           className="grim-modal-overlay"
@@ -436,7 +485,71 @@ const NoteDetails = () => {
         </div>
       )}
 
-      {/* Popup de succès */}
+      {/* --- Modale de Liens --- */}
+      {showLinkModal && (
+        <div
+          className="grim-modal-overlay"
+          onClick={() => setShowLinkModal(false)}
+        >
+          <div
+            className="grim-modal-content link-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="grim-modal-title">🔗 Tisser un lien</h3>
+
+            <div className="link-form-group">
+              <label>Lier vers une autre page du Grimoire :</label>
+              <select
+                value={selectedNoteId}
+                onChange={(e) => {
+                  setSelectedNoteId(e.target.value);
+                  if (e.target.value) setExternalUrl("");
+                }}
+                className="grim-input"
+              >
+                <option value="">-- Choisir une note --</option>
+                {notesList.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grim-divider">
+              <span>OU</span>
+            </div>
+
+            <div className="link-form-group">
+              <label>Lien externe (URL) :</label>
+              <input
+                type="text"
+                value={externalUrl}
+                onChange={(e) => {
+                  setExternalUrl(e.target.value);
+                  if (e.target.value) setSelectedNoteId("");
+                }}
+                placeholder="https://..."
+                className="grim-input"
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button
+                onClick={() => setShowLinkModal(false)}
+                className="grim-btn delete-btn"
+              >
+                Annuler
+              </button>
+              <button onClick={applyLink} className="grim-btn save-btn">
+                Valider
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Popups --- */}
       {showSavePopup && (
         <div className="grim-save-popup">
           <div className="popup-icon">✨</div>
@@ -444,7 +557,6 @@ const NoteDetails = () => {
         </div>
       )}
 
-      {/* Popup d'erreur */}
       {showErrorPopup && (
         <div className="grim-error-popup">
           <div className="popup-icon">⚠️</div>
@@ -452,12 +564,10 @@ const NoteDetails = () => {
         </div>
       )}
 
-      {/* BARRE DE MÉTADONNÉES EN BAS */}
+      {/* --- Footer Metadata --- */}
       <div className="meta-footer">
         {isMetaLoading && <span>⏳ Chargement des métadonnées…</span>}
-
         {metaError && <span className="meta-error">⚠️ {metaError}</span>}
-
         {!isMetaLoading && !metaError && metadata && (
           <div className="meta-info-row">
             <span>
